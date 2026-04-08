@@ -36,6 +36,7 @@ Export-ModuleMember -Function @(
     'Invoke-OracleQuery',
     'Invoke-OracleScalar',
     'Invoke-OracleNonQuery',
+    'Invoke-OracleSqlFile',
     'Invoke-OraclePlSql',
     'Export-OracleDelimitedFile',
     'New-OracleParameter'

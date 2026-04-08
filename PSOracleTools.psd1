@@ -21,6 +21,7 @@
         'Invoke-OracleQuery',
         'Invoke-OracleScalar',
         'Invoke-OracleNonQuery',
+        'Invoke-OracleSqlFile',
         'Invoke-OraclePlSql',
         'Export-OracleDelimitedFile',
         'New-OracleParameter'
@@ -35,7 +36,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = ''
             ProjectUri = ''
-            ReleaseNotes = 'Load Oracle managed driver dependencies from the module lib folder, initialize the Oracle client on import, configure wallet/TNS settings from TNS_ADMIN, add custom credential-store paths and operational logging, add reusable connection profiles, and add comment-based help plus a README.'
+            ReleaseNotes = 'Load Oracle managed driver dependencies from the module lib folder, initialize the Oracle client on import, configure wallet/TNS settings from TNS_ADMIN, add custom credential-store paths and operational logging, add reusable connection profiles, add comment-based help plus a README, and add SQL file execution support.'
         }
     }
 }

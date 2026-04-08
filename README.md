@@ -6,6 +6,7 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 - initialize the managed Oracle client automatically on import
 - connect with a raw connection string, `PSCredential`, or a saved credential name
 - run queries, scalar statements, non-query SQL, and PL/SQL blocks
+- execute SQL files
 - export result sets to delimited text files
 - use wallet and `tnsnames.ora` based connections through `TNS_ADMIN`
 - optionally log execution details for automation and troubleshooting
@@ -198,6 +199,16 @@ begin
 end;
 "@ `
   -Parameters @($outCount)
+```
+
+### SQL file execution
+
+```powershell
+Invoke-OracleSqlFile `
+  -ProfileName 'ProdLow' `
+  -Path 'C:\Scripts\refresh_movies.sql' `
+  -Log `
+  -LogPath 'C:\Logs\oracle.log'
 ```
 
 ## Export Example
