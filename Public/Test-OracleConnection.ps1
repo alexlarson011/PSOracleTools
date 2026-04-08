@@ -14,26 +14,32 @@ function Test-OracleConnection {
         [string]$CredentialName,
 
         [Parameter(Mandatory, ParameterSetName = 'ByCredentialName')]
-        [string]$DataSource2
+        [string]$CredentialDataSource,
+
+        [Parameter()]
+        [int]$ConnectionTimeout = 15
     )
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
+    $userName = $null
+    $targetDataSource = $null
 
     try {
         if ($PSCmdlet.ParameterSetName -eq 'ByConnectionString') {
             $cs = $ConnectionString
-            $userName = $null
         }
         elseif ($PSCmdlet.ParameterSetName -eq 'ByCredential') {
             $userName = $Credential.UserName
-            $cs = New-OracleConnectionString -DataSource $DataSource -UserId $Credential.UserName -Password ($Credential.GetNetworkCredential().Password)
+            $targetDataSource = $DataSource
+            $cs = New-OracleConnectionString -DataSource $DataSource -UserId $Credential.UserName -Password ($Credential.GetNetworkCredential().Password) -ConnectionTimeout $ConnectionTimeout
         }
         else {
             $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName
             $userName = $resolvedCredential.UserName
-            $cs = New-OracleConnectionString -DataSource $DataSource2 -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
+            $targetDataSource = $CredentialDataSource
+            $cs = New-OracleConnectionString -DataSource $CredentialDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password) -ConnectionTimeout $ConnectionTimeout
         }
 
         $connection = New-OracleConnection -ConnectionString $cs
@@ -59,8 +65,8 @@ function Test-OracleConnection {
         [pscustomobject]@{
             Success      = $false
             UserName     = $userName
-            DataSource   = $DataSource
-            ErrorMessage = $_.Exception.Message
+            DataSource   = $targetDataSource
+            ErrorMessage = Get-OracleExceptionMessage -Exception $_.Exception
             ElapsedMs    = $sw.ElapsedMilliseconds
         }
     }

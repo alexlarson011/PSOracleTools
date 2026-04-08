@@ -6,11 +6,14 @@ function Initialize-OracleClient {
     )
 
     Import-OracleAssembly -DllPath $DllPath
+    $configuration = Set-OracleClientConfiguration
 
     [pscustomobject]@{
-        Success   = $true
-        DllPath   = $DllPath
-        Loaded    = (Test-OracleAssemblyLoaded)
-        Timestamp = Get-Date
+        Success        = $true
+        DllPath        = $DllPath
+        Loaded         = (Test-OracleAssemblyLoaded)
+        TnsAdmin       = $configuration.TnsAdmin
+        WalletLocation = $configuration.WalletLocation
+        Timestamp      = Get-Date
     }
 }

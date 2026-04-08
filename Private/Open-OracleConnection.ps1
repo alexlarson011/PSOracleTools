@@ -5,9 +5,14 @@ function Open-OracleConnection {
         [Oracle.ManagedDataAccess.Client.OracleConnection]$Connection
     )
 
-    if ($Connection.State -ne [System.Data.ConnectionState]::Open) {
-        $Connection.Open()
-    }
+    try {
+        if ($Connection.State -ne [System.Data.ConnectionState]::Open) {
+            $Connection.Open()
+        }
 
-    return $Connection
+        return $Connection
+    }
+    catch {
+        throw "Failed to open Oracle connection. $(Get-OracleExceptionMessage -Exception $_.Exception)"
+    }
 }

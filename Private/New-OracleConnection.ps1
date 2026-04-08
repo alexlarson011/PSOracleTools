@@ -9,6 +9,11 @@ function New-OracleConnection {
         throw 'Oracle.ManagedDataAccess assembly is not loaded. Run Initialize-OracleClient first.'
     }
 
-    $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($ConnectionString)
-    return $connection
+    try {
+        $connection = New-Object Oracle.ManagedDataAccess.Client.OracleConnection($ConnectionString)
+        return $connection
+    }
+    catch {
+        throw "Failed to create Oracle connection. $(Get-OracleExceptionMessage -Exception $_.Exception)"
+    }
 }

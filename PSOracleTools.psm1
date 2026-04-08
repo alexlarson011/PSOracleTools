@@ -1,10 +1,13 @@
 Set-StrictMode -Version Latest
 
 $script:PSOracleTools = @{
-    ModuleRoot      = $PSScriptRoot
-    OracleDllPath   = $null
-    OracleLoaded    = $false
-    CredentialStore = $null
+    ModuleRoot                 = $PSScriptRoot
+    LibPath                    = Join-Path -Path $PSScriptRoot -ChildPath 'lib'
+    OracleDllPath              = $null
+    OracleLoaded               = $false
+    CredentialStore            = $null
+    AssemblyResolver           = $null
+    AssemblyResolverRegistered = $false
 }
 
 $privatePath = Join-Path -Path $PSScriptRoot -ChildPath 'Private'
@@ -17,6 +20,8 @@ Get-ChildItem -Path $privatePath -Filter '*.ps1' -File |
 Get-ChildItem -Path $publicPath -Filter '*.ps1' -File |
     Sort-Object Name |
     ForEach-Object { . $_.FullName }
+
+Initialize-OracleClient | Out-Null
 
 Export-ModuleMember -Function @(
     'Initialize-OracleClient',

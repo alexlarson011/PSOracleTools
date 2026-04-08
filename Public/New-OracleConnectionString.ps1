@@ -18,6 +18,10 @@ function New-OracleConnectionString {
 
         [Parameter()]
         [int]$MaxPoolSize = 10
+        ,
+
+        [Parameter()]
+        [int]$ConnectionTimeout = 30
     )
 
     $builder = New-Object System.Text.StringBuilder
@@ -28,6 +32,7 @@ function New-OracleConnectionString {
     [void]$builder.Append("Pooling=$Pooling;")
     [void]$builder.Append("Min Pool Size=$MinPoolSize;")
     [void]$builder.Append("Max Pool Size=$MaxPoolSize;")
+    [void]$builder.Append("Connection Timeout=$ConnectionTimeout;")
 
     return $builder.ToString()
 }
