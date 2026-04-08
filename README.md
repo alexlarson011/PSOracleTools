@@ -21,6 +21,14 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 
 The module ships with `Oracle.ManagedDataAccess.dll` and the managed dependencies it needs in the local `lib` folder.
 
+## Validation
+
+You can run a lightweight repo-local validation pass with:
+
+```powershell
+.\scripts\Validate-Module.ps1
+```
+
 ## Importing The Module
 
 ```powershell
@@ -211,6 +219,9 @@ Invoke-OracleSqlFile `
   -Log `
   -LogPath '.\logs\oracle.log'
 ```
+
+`Invoke-OracleSqlFile` executes the file contents as one Oracle command text payload.
+It works well for many DDL, DML, and PL/SQL scripts, but it is not a SQL*Plus-style script runner and does not process SQL*Plus directives or split multiple independent statements automatically.
 
 ## Export Example
 
