@@ -8,6 +8,7 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 - run queries, scalar statements, non-query SQL, and PL/SQL blocks
 - execute SQL files
 - export result sets to delimited text files
+- export result sets to CSV files
 - use wallet and `tnsnames.ora` based connections through `TNS_ADMIN`
 - optionally log execution details for automation and troubleshooting
 
@@ -225,6 +226,19 @@ order by movie_id
   -Path 'C:\Temp\movies.txt' `
   -Delimiter '|' `
   -IncludeHeader
+```
+
+### CSV export
+
+```powershell
+Export-OracleCsv `
+  -ProfileName 'ProdLow' `
+  -Sql @"
+select movie_id, movie_nm
+from ps_tools.movies
+order by movie_id
+"@ `
+  -Path 'C:\Temp\movies.csv'
 ```
 
 ## Logging

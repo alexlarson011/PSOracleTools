@@ -39,5 +39,6 @@ Export-ModuleMember -Function @(
     'Invoke-OracleSqlFile',
     'Invoke-OraclePlSql',
     'Export-OracleDelimitedFile',
+    'Export-OracleCsv',
     'New-OracleParameter'
 )
