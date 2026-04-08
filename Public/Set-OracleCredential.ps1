@@ -8,7 +8,10 @@ function Set-OracleCredential {
         [PSCredential]$Credential,
 
         [Parameter()]
-        [string]$UserName
+        [string]$UserName,
+
+        [Parameter()]
+        [string]$CredentialStorePath
     )
 
     if (-not $Credential) {
@@ -19,7 +22,7 @@ function Set-OracleCredential {
         $Credential = Get-Credential -UserName $UserName -Message "Enter Oracle password for [$Name]"
     }
 
-    $path = Get-OracleCredentialStorePath
+    $path = Get-OracleCredentialStorePath -CredentialStorePath $CredentialStorePath
     $records = @()
 
     if (Test-Path -Path $path) {
@@ -36,6 +39,10 @@ function Set-OracleCredential {
     }
 
     $records += $newRecord
+    $directory = Split-Path -Path $path -Parent
+    if ($directory -and -not (Test-Path -Path $directory)) {
+        New-Item -Path $directory -ItemType Directory -Force | Out-Null
+    }
     $records | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
 
     [pscustomobject]@{

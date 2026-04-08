@@ -38,7 +38,22 @@ function Export-OracleDelimitedFile {
         $Parameters,
 
         [Parameter()]
-        [int]$CommandTimeout = 300
+        [int]$CommandTimeout = 300,
+
+        [Parameter()]
+        [string]$CredentialStorePath,
+
+        [Parameter()]
+        [switch]$Log,
+
+        [Parameter()]
+        [string]$LogPath,
+
+        [Parameter()]
+        [switch]$LogSql,
+
+        [Parameter()]
+        [switch]$LogParameters
     )
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -47,6 +62,7 @@ function Export-OracleDelimitedFile {
     $reader = $null
     $writer = $null
     $rowCount = 0
+    $targetDataSource = $null
 
     try {
         switch ($PSCmdlet.ParameterSetName) {
@@ -54,11 +70,23 @@ function Export-OracleDelimitedFile {
                 $cs = $ConnectionString
             }
             'ByCredential' {
+                $targetDataSource = $DataSource
                 $cs = New-OracleConnectionString -DataSource $DataSource -UserId $Credential.UserName -Password ($Credential.GetNetworkCredential().Password)
             }
             'ByCredentialName' {
-                $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName
+                $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName -CredentialStorePath $CredentialStorePath
+                $targetDataSource = $CredentialDataSource
                 $cs = New-OracleConnectionString -DataSource $CredentialDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
+            }
+        }
+
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile started; DataSource={0}; OutputPath={1}; CommandTimeout={2}" -f $targetDataSource, $Path, $CommandTimeout)
+            if ($LogSql) {
+                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile SQL: {0}" -f $Sql)
+            }
+            if ($LogParameters) {
+                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
             }
         }
 
@@ -95,12 +123,23 @@ function Export-OracleDelimitedFile {
 
         $sw.Stop()
 
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $rowCount, $sw.ElapsedMilliseconds)
+        }
+
         [pscustomobject]@{
             Success   = $true
             Path      = $Path
             RowCount  = $rowCount
             ElapsedMs = $sw.ElapsedMilliseconds
         }
+    }
+    catch {
+        $sw.Stop()
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Level ERROR -Message ("Export-OracleDelimitedFile failed; DataSource={0}; OutputPath={1}; ElapsedMs={2}; Error={3}" -f $targetDataSource, $Path, $sw.ElapsedMilliseconds, (Get-OracleExceptionMessage -Exception $_.Exception))
+        }
+        throw
     }
     finally {
         if ($writer) { $writer.Flush() }

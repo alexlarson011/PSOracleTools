@@ -2,10 +2,13 @@ function Get-OracleCredential {
     [CmdletBinding()]
     param(
         [Parameter()]
-        [string]$Name
+        [string]$Name,
+
+        [Parameter()]
+        [string]$CredentialStorePath
     )
 
-    $path = Get-OracleCredentialStorePath
+    $path = Get-OracleCredentialStorePath -CredentialStorePath $CredentialStorePath
 
     if (-not (Test-Path -Path $path)) {
         throw 'No credential store found.'

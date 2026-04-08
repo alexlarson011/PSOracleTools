@@ -5,7 +5,10 @@ function Resolve-OracleCredential {
         [PSCredential]$Credential,
 
         [Parameter(Mandatory, ParameterSetName = 'ByName')]
-        [string]$CredentialName
+        [string]$CredentialName,
+
+        [Parameter()]
+        [string]$CredentialStorePath
     )
 
     switch ($PSCmdlet.ParameterSetName) {
@@ -14,7 +17,7 @@ function Resolve-OracleCredential {
         }
 
         'ByName' {
-            $record = Get-OracleCredential -Name $CredentialName
+            $record = Get-OracleCredential -Name $CredentialName -CredentialStorePath $CredentialStorePath
             $securePassword = Unprotect-OraclePassword -EncryptedString $record.EncryptedPassword
 
             return New-Object System.Management.Automation.PSCredential(

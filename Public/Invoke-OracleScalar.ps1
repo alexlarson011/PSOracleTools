@@ -23,11 +23,27 @@ function Invoke-OracleScalar {
         $Parameters,
 
         [Parameter()]
-        [int]$CommandTimeout = 300
+        [int]$CommandTimeout = 300,
+
+        [Parameter()]
+        [string]$CredentialStorePath,
+
+        [Parameter()]
+        [switch]$Log,
+
+        [Parameter()]
+        [string]$LogPath,
+
+        [Parameter()]
+        [switch]$LogSql,
+
+        [Parameter()]
+        [switch]$LogParameters
     )
 
     $connection = $null
     $command = $null
+    $targetDataSource = $null
 
     try {
         switch ($PSCmdlet.ParameterSetName) {
@@ -35,11 +51,23 @@ function Invoke-OracleScalar {
                 $cs = $ConnectionString
             }
             'ByCredential' {
+                $targetDataSource = $DataSource
                 $cs = New-OracleConnectionString -DataSource $DataSource -UserId $Credential.UserName -Password ($Credential.GetNetworkCredential().Password)
             }
             'ByCredentialName' {
-                $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName
+                $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName -CredentialStorePath $CredentialStorePath
+                $targetDataSource = $CredentialDataSource
                 $cs = New-OracleConnectionString -DataSource $CredentialDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
+            }
+        }
+
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
+            if ($LogSql) {
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar SQL: {0}" -f $Sql)
+            }
+            if ($LogParameters) {
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
             }
         }
 
@@ -49,7 +77,17 @@ function Invoke-OracleScalar {
         $command = New-OracleCommand -Connection $connection -CommandText $Sql -CommandTimeout $CommandTimeout
         Add-OracleParameters -Command $command -Parameters $Parameters
 
-        return $command.ExecuteScalar()
+        $result = $command.ExecuteScalar()
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar succeeded; DataSource={0}; Result={1}" -f $connection.DataSource, $result)
+        }
+        return $result
+    }
+    catch {
+        if ($Log -or $LogPath) {
+            Write-OracleLog -Path $LogPath -Level ERROR -Message ("Invoke-OracleScalar failed; DataSource={0}; Error={1}" -f $targetDataSource, (Get-OracleExceptionMessage -Exception $_.Exception))
+        }
+        throw
     }
     finally {
         Close-OracleResource -Object $command
