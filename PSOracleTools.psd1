@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '0.1.0'
+    ModuleVersion     = '0.2.0'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -32,7 +32,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = ''
             ProjectUri = ''
-            ReleaseNotes = 'Initial scaffold release.'
+            ReleaseNotes = 'Load Oracle managed driver dependencies from the module lib folder, initialize the Oracle client on import, and configure wallet/TNS settings from TNS_ADMIN.'
         }
     }
 }
