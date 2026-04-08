@@ -22,6 +22,9 @@ Saved credential name used with -CredentialDataSource.
 .PARAMETER CredentialDataSource
 Oracle data source or TNS alias used with -CredentialName.
 
+.PARAMETER ProfileName
+Saved connection profile name.
+
 .PARAMETER ConnectionTimeout
 Connection timeout in seconds.
 
@@ -40,9 +43,9 @@ Test-OracleConnection -Credential $cred -DataSource 'mydb_low'
 Tests an Oracle connection using a PSCredential.
 
 .EXAMPLE
-Test-OracleConnection -CredentialName 'ProdLow' -CredentialDataSource 'mydb_low' -Log -LogPath 'C:\Logs\oracle.log'
+Test-OracleConnection -ProfileName 'ProdLow'
 
-Tests a connection using a saved credential and writes start/failure/success log entries.
+Tests a connection using a saved connection profile.
 #>
 function Test-OracleConnection {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
@@ -62,11 +65,17 @@ function Test-OracleConnection {
         [Parameter(Mandatory, ParameterSetName = 'ByCredentialName')]
         [string]$CredentialDataSource,
 
+        [Parameter(Mandatory, ParameterSetName = 'ByProfileName')]
+        [string]$ProfileName,
+
         [Parameter()]
         [int]$ConnectionTimeout = 15,
 
         [Parameter()]
         [string]$CredentialStorePath,
+
+        [Parameter()]
+        [string]$ProfileStorePath,
 
         [Parameter()]
         [switch]$Log,
@@ -81,6 +90,7 @@ function Test-OracleConnection {
     $userName = $null
     $targetDataSource = $null
     $operationSucceeded = $false
+    $resolvedProfile = $null
 
     try {
         if ($PSCmdlet.ParameterSetName -eq 'ByConnectionString') {
@@ -96,6 +106,24 @@ function Test-OracleConnection {
             $userName = $resolvedCredential.UserName
             $targetDataSource = $CredentialDataSource
             $cs = New-OracleConnectionString -DataSource $CredentialDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password) -ConnectionTimeout $ConnectionTimeout
+        }
+        else {
+            $resolvedProfile = Resolve-OracleConnectionProfile -ProfileName $ProfileName -ProfileStorePath $ProfileStorePath
+
+            if (-not $PSBoundParameters.ContainsKey('CredentialStorePath') -and $resolvedProfile.CredentialStorePath) {
+                $CredentialStorePath = [string]$resolvedProfile.CredentialStorePath
+            }
+            if (-not $PSBoundParameters.ContainsKey('ConnectionTimeout') -and $resolvedProfile.ConnectionTimeout) {
+                $ConnectionTimeout = [int]$resolvedProfile.ConnectionTimeout
+            }
+            if (-not $PSBoundParameters.ContainsKey('LogPath') -and $resolvedProfile.LogPath) {
+                $LogPath = [string]$resolvedProfile.LogPath
+            }
+
+            $resolvedCredential = Resolve-OracleCredential -CredentialName ([string]$resolvedProfile.CredentialName) -CredentialStorePath $CredentialStorePath
+            $userName = $resolvedCredential.UserName
+            $targetDataSource = [string]$resolvedProfile.DataSource
+            $cs = New-OracleConnectionString -DataSource $targetDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password) -ConnectionTimeout $ConnectionTimeout
         }
 
         if ($Log -or $LogPath) {

@@ -15,6 +15,9 @@ Optional bind parameters supplied as a hashtable or OracleParameter objects.
 .PARAMETER CommandTimeout
 Command timeout in seconds.
 
+.PARAMETER ProfileName
+Saved connection profile name.
+
 .PARAMETER CredentialStorePath
 Optional custom path to the credential store JSON file.
 
@@ -31,9 +34,9 @@ Includes SQL text in log entries.
 Includes parameter names and types in log entries.
 
 .EXAMPLE
-Invoke-OracleScalar -Credential $cred -DataSource 'mydb_low' -Sql 'select count(*) from ps_tools.movies'
+Invoke-OracleScalar -ProfileName 'ProdLow' -Sql 'select count(*) from ps_tools.movies'
 
-Returns a single scalar value.
+Returns a single scalar value using a saved connection profile.
 #>
 function Invoke-OracleScalar {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
@@ -53,6 +56,9 @@ function Invoke-OracleScalar {
         [Parameter(Mandatory, ParameterSetName = 'ByCredentialName')]
         [string]$CredentialDataSource,
 
+        [Parameter(Mandatory, ParameterSetName = 'ByProfileName')]
+        [string]$ProfileName,
+
         [Parameter(Mandatory)]
         [string]$Sql,
 
@@ -64,6 +70,9 @@ function Invoke-OracleScalar {
 
         [Parameter()]
         [string]$CredentialStorePath,
+
+        [Parameter()]
+        [string]$ProfileStorePath,
 
         [Parameter()]
         [switch]$Log,
@@ -81,6 +90,7 @@ function Invoke-OracleScalar {
     $connection = $null
     $command = $null
     $targetDataSource = $null
+    $resolvedProfile = $null
 
     try {
         switch ($PSCmdlet.ParameterSetName) {
@@ -95,6 +105,28 @@ function Invoke-OracleScalar {
                 $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName -CredentialStorePath $CredentialStorePath
                 $targetDataSource = $CredentialDataSource
                 $cs = New-OracleConnectionString -DataSource $CredentialDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
+            }
+            'ByProfileName' {
+                $resolvedProfile = Resolve-OracleConnectionProfile -ProfileName $ProfileName -ProfileStorePath $ProfileStorePath
+                if (-not $PSBoundParameters.ContainsKey('CredentialStorePath') -and $resolvedProfile.CredentialStorePath) {
+                    $CredentialStorePath = [string]$resolvedProfile.CredentialStorePath
+                }
+                if (-not $PSBoundParameters.ContainsKey('CommandTimeout') -and $resolvedProfile.CommandTimeout) {
+                    $CommandTimeout = [int]$resolvedProfile.CommandTimeout
+                }
+                if (-not $PSBoundParameters.ContainsKey('LogPath') -and $resolvedProfile.LogPath) {
+                    $LogPath = [string]$resolvedProfile.LogPath
+                }
+                if (-not $PSBoundParameters.ContainsKey('LogSql') -and $resolvedProfile.LogSql) {
+                    $LogSql = [bool]$resolvedProfile.LogSql
+                }
+                if (-not $PSBoundParameters.ContainsKey('LogParameters') -and $resolvedProfile.LogParameters) {
+                    $LogParameters = [bool]$resolvedProfile.LogParameters
+                }
+
+                $resolvedCredential = Resolve-OracleCredential -CredentialName ([string]$resolvedProfile.CredentialName) -CredentialStorePath $CredentialStorePath
+                $targetDataSource = [string]$resolvedProfile.DataSource
+                $cs = New-OracleConnectionString -DataSource $targetDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
             }
         }
 

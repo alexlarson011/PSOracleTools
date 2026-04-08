@@ -78,6 +78,54 @@ You can set a default store path with:
 $env:PSORACLETOOLS_CREDENTIAL_STORE = 'C:\Secure\oracle-creds.json'
 ```
 
+## Connection Profiles
+
+Connection profiles store non-secret defaults such as:
+
+- `DataSource`
+- `CredentialName`
+- `CredentialStorePath`
+- `CommandTimeout`
+- `ConnectionTimeout`
+- `LogPath`
+- `LogSql`
+- `LogParameters`
+
+Create a profile:
+
+```powershell
+Set-OracleConnectionProfile `
+  -Name 'ProdLow' `
+  -DataSource 'mydb_low' `
+  -CredentialName 'ProdCred' `
+  -CommandTimeout 60 `
+  -ConnectionTimeout 15 `
+  -LogPath 'C:\Logs\oracle.log'
+```
+
+Use a profile:
+
+```powershell
+Test-OracleConnection -ProfileName 'ProdLow'
+
+Invoke-OracleQuery `
+  -ProfileName 'ProdLow' `
+  -Sql 'select movie_id, movie_nm from ps_tools.movies'
+```
+
+List or remove profiles:
+
+```powershell
+Get-OracleConnectionProfile
+Remove-OracleConnectionProfile -Name 'ProdLow' -Confirm:$false
+```
+
+You can also set a default profile store path with:
+
+```powershell
+$env:PSORACLETOOLS_PROFILE_STORE = 'C:\Secure\oracle-profiles.json'
+```
+
 ## Query Examples
 
 ### Scalar

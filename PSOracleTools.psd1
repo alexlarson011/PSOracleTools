@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '0.2.0'
+    ModuleVersion     = '0.3.0'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -15,6 +15,9 @@
         'Set-OracleCredential',
         'Get-OracleCredential',
         'Remove-OracleCredential',
+        'Set-OracleConnectionProfile',
+        'Get-OracleConnectionProfile',
+        'Remove-OracleConnectionProfile',
         'Invoke-OracleQuery',
         'Invoke-OracleScalar',
         'Invoke-OracleNonQuery',
@@ -32,7 +35,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = ''
             ProjectUri = ''
-            ReleaseNotes = 'Load Oracle managed driver dependencies from the module lib folder, initialize the Oracle client on import, and configure wallet/TNS settings from TNS_ADMIN.'
+            ReleaseNotes = 'Load Oracle managed driver dependencies from the module lib folder, initialize the Oracle client on import, configure wallet/TNS settings from TNS_ADMIN, add custom credential-store paths and operational logging, add reusable connection profiles, and add comment-based help plus a README.'
         }
     }
 }
