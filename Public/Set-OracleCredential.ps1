@@ -24,7 +24,7 @@ Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER'
 Prompts for a password and stores the credential.
 
 .EXAMPLE
-Set-OracleCredential -Name 'ProdLow' -Credential $cred -CredentialStorePath 'C:\Secure\oracle-creds.json'
+Set-OracleCredential -Name 'ProdLow' -Credential $cred -CredentialStorePath '.\config\oracle-creds.json'
 
 Stores a credential in a custom credential file.
 #>

@@ -24,7 +24,7 @@ The module ships with `Oracle.ManagedDataAccess.dll` and the managed dependencie
 ## Importing The Module
 
 ```powershell
-Import-Module "C:\Users\alexl\OneDrive\Scripts\PowerShell\Modules\PSOracleTools\PSOracleTools.psd1" -Force
+Import-Module .\PSOracleTools.psd1 -Force
 ```
 
 Importing the module also initializes the Oracle managed client automatically.
@@ -67,7 +67,7 @@ By default, the module uses a credential store under the current user's PowerShe
 You can also use a custom credential store path:
 
 ```powershell
-$store = 'C:\Secure\oracle-creds.json'
+$store = '.\config\oracle-creds.json'
 
 Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER' -CredentialStorePath $store
 Get-OracleCredential -Name 'ProdLow' -CredentialStorePath $store
@@ -77,7 +77,7 @@ Remove-OracleCredential -Name 'ProdLow' -CredentialStorePath $store -Confirm:$fa
 You can set a default store path with:
 
 ```powershell
-$env:PSORACLETOOLS_CREDENTIAL_STORE = 'C:\Secure\oracle-creds.json'
+$env:PSORACLETOOLS_CREDENTIAL_STORE = '.\config\oracle-creds.json'
 ```
 
 ## Connection Profiles
@@ -102,7 +102,7 @@ Set-OracleConnectionProfile `
   -CredentialName 'ProdCred' `
   -CommandTimeout 60 `
   -ConnectionTimeout 15 `
-  -LogPath 'C:\Logs\oracle.log'
+  -LogPath '.\logs\oracle.log'
 ```
 
 Use a profile:
@@ -125,7 +125,7 @@ Remove-OracleConnectionProfile -Name 'ProdLow' -Confirm:$false
 You can also set a default profile store path with:
 
 ```powershell
-$env:PSORACLETOOLS_PROFILE_STORE = 'C:\Secure\oracle-profiles.json'
+$env:PSORACLETOOLS_PROFILE_STORE = '.\config\oracle-profiles.json'
 ```
 
 ## Query Examples
@@ -207,9 +207,9 @@ end;
 ```powershell
 Invoke-OracleSqlFile `
   -ProfileName 'ProdLow' `
-  -Path 'C:\Scripts\refresh_movies.sql' `
+  -Path '.\scripts\refresh_movies.sql' `
   -Log `
-  -LogPath 'C:\Logs\oracle.log'
+  -LogPath '.\logs\oracle.log'
 ```
 
 ## Export Example
@@ -223,7 +223,7 @@ select movie_id, movie_nm
 from ps_tools.movies
 order by movie_id
 "@ `
-  -Path 'C:\Temp\movies.txt' `
+  -Path '.\output\movies.txt' `
   -Delimiter '|' `
   -IncludeHeader
 ```
@@ -238,7 +238,7 @@ select movie_id, movie_nm
 from ps_tools.movies
 order by movie_id
 "@ `
-  -Path 'C:\Temp\movies.csv'
+  -Path '.\output\movies.csv'
 ```
 
 ## Logging
@@ -258,7 +258,7 @@ Invoke-OracleQuery `
   -CredentialDataSource 'mydb_low' `
   -Sql 'select movie_id, movie_nm from ps_tools.movies' `
   -Log `
-  -LogPath 'C:\Logs\oracle.log'
+  -LogPath '.\logs\oracle.log'
 ```
 
 Logging includes start/success/failure messages, elapsed time, and relevant summary details.

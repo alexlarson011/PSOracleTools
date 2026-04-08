@@ -49,7 +49,7 @@ Includes SQL text in log entries.
 Includes parameter names and types in log entries.
 
 .EXAMPLE
-Export-OracleDelimitedFile -ProfileName 'ProdLow' -Sql 'select movie_id, movie_nm from ps_tools.movies' -Path 'C:\Temp\movies.txt' -IncludeHeader
+Export-OracleDelimitedFile -ProfileName 'ProdLow' -Sql 'select movie_id, movie_nm from ps_tools.movies' -Path '.\output\movies.txt' -IncludeHeader
 
 Exports query results to a delimited file using a saved connection profile.
 #>

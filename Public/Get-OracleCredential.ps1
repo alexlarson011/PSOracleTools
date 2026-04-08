@@ -18,7 +18,7 @@ Get-OracleCredential
 Lists all saved credential records.
 
 .EXAMPLE
-Get-OracleCredential -Name 'ProdLow' -CredentialStorePath 'C:\Secure\oracle-creds.json'
+Get-OracleCredential -Name 'ProdLow' -CredentialStorePath '.\config\oracle-creds.json'
 
 Returns one saved credential record from a custom store path.
 #>

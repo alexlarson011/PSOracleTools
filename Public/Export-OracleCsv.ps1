@@ -41,7 +41,7 @@ Includes SQL text in log entries.
 Includes parameter names and types in log entries.
 
 .EXAMPLE
-Export-OracleCsv -ProfileName 'ProdLow' -Sql 'select movie_id, movie_nm from ps_tools.movies' -Path 'C:\Temp\movies.csv'
+Export-OracleCsv -ProfileName 'ProdLow' -Sql 'select movie_id, movie_nm from ps_tools.movies' -Path '.\output\movies.csv'
 
 Exports query results to a CSV file using a saved connection profile.
 #>

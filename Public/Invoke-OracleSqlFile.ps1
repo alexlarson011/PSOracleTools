@@ -29,7 +29,7 @@ Optional log file path.
 Includes SQL text in log entries.
 
 .EXAMPLE
-Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path 'C:\Scripts\refresh_movies.sql'
+Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\refresh_movies.sql'
 
 Executes a SQL file using a saved connection profile.
 #>
