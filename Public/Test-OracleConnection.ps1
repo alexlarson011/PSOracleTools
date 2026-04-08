@@ -101,7 +101,7 @@ function Test-OracleConnection {
             $targetDataSource = $DataSource
             $cs = New-OracleConnectionString -DataSource $DataSource -UserId $Credential.UserName -Password ($Credential.GetNetworkCredential().Password) -ConnectionTimeout $ConnectionTimeout
         }
-        else {
+        elseif ($PSCmdlet.ParameterSetName -eq 'ByCredentialName') {
             $resolvedCredential = Resolve-OracleCredential -CredentialName $CredentialName -CredentialStorePath $CredentialStorePath
             $userName = $resolvedCredential.UserName
             $targetDataSource = $CredentialDataSource
