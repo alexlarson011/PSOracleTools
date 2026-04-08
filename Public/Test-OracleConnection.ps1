@@ -1,3 +1,49 @@
+<#
+.SYNOPSIS
+Tests connectivity to an Oracle database.
+
+.DESCRIPTION
+Attempts to open an Oracle connection and run a simple scalar query against dual.
+Supports a raw connection string, a PSCredential, or a saved credential name.
+Optional logging writes concise operational entries to the information stream and/or a file.
+
+.PARAMETER ConnectionString
+Full Oracle connection string.
+
+.PARAMETER Credential
+PSCredential used to build the Oracle connection string.
+
+.PARAMETER DataSource
+Oracle data source or TNS alias used with -Credential.
+
+.PARAMETER CredentialName
+Saved credential name used with -CredentialDataSource.
+
+.PARAMETER CredentialDataSource
+Oracle data source or TNS alias used with -CredentialName.
+
+.PARAMETER ConnectionTimeout
+Connection timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path. When supplied, log entries are also appended to the file.
+
+.EXAMPLE
+Test-OracleConnection -Credential $cred -DataSource 'mydb_low'
+
+Tests an Oracle connection using a PSCredential.
+
+.EXAMPLE
+Test-OracleConnection -CredentialName 'ProdLow' -CredentialDataSource 'mydb_low' -Log -LogPath 'C:\Logs\oracle.log'
+
+Tests a connection using a saved credential and writes start/failure/success log entries.
+#>
 function Test-OracleConnection {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(

@@ -1,3 +1,31 @@
+<#
+.SYNOPSIS
+Creates an OracleParameter for use with parameterized commands.
+
+.DESCRIPTION
+Builds an Oracle.ManagedDataAccess.Client.OracleParameter with the specified name, value, type, direction, and size.
+Use the returned parameter object with Invoke-OracleQuery, Invoke-OracleScalar, Invoke-OracleNonQuery, or Invoke-OraclePlSql.
+
+.PARAMETER Name
+Parameter name.
+
+.PARAMETER Value
+Parameter value. Null is converted to DBNull.Value.
+
+.PARAMETER OracleDbType
+Optional Oracle database type.
+
+.PARAMETER Direction
+Parameter direction. Defaults to Input.
+
+.PARAMETER Size
+Optional parameter size.
+
+.EXAMPLE
+New-OracleParameter -Name 'movie_id' -Value 1 -OracleDbType Int32
+
+Creates an input parameter for a numeric movie id.
+#>
 function New-OracleParameter {
     [CmdletBinding()]
     param(

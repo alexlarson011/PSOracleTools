@@ -1,3 +1,40 @@
+<#
+.SYNOPSIS
+Runs a SQL statement that does not return rows.
+
+.DESCRIPTION
+Executes DML or other non-query SQL and returns rows affected plus elapsed time.
+Supports raw connection strings, PSCredential input, or saved credential names.
+
+.PARAMETER Sql
+SQL text to execute.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER CommandTimeout
+Command timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path.
+
+.PARAMETER LogSql
+Includes SQL text in log entries.
+
+.PARAMETER LogParameters
+Includes parameter names and types in log entries.
+
+.EXAMPLE
+Invoke-OracleNonQuery -Credential $cred -DataSource 'mydb_low' -Sql 'delete from ps_tools.movies where movie_id = :movie_id' -Parameters @{ movie_id = 99 }
+
+Executes a parameterized non-query statement.
+#>
 function Invoke-OracleNonQuery {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(

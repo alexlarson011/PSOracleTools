@@ -1,3 +1,33 @@
+<#
+.SYNOPSIS
+Stores an Oracle credential for reuse.
+
+.DESCRIPTION
+Stores a username and encrypted password in the module's credential store.
+You can supply a PSCredential directly or prompt interactively by providing -UserName.
+
+.PARAMETER Name
+Logical name used to retrieve the saved credential later.
+
+.PARAMETER Credential
+PSCredential to store.
+
+.PARAMETER UserName
+User name to prompt for when -Credential is not supplied.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.EXAMPLE
+Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER'
+
+Prompts for a password and stores the credential.
+
+.EXAMPLE
+Set-OracleCredential -Name 'ProdLow' -Credential $cred -CredentialStorePath 'C:\Secure\oracle-creds.json'
+
+Stores a credential in a custom credential file.
+#>
 function Set-OracleCredential {
     [CmdletBinding()]
     param(

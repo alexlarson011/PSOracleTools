@@ -1,3 +1,55 @@
+<#
+.SYNOPSIS
+Exports query results to a delimited text file.
+
+.DESCRIPTION
+Runs a query and writes the resulting rows to a delimited UTF-8 file.
+Supports raw connection strings, PSCredential input, or saved credential names.
+
+.PARAMETER Sql
+SQL query text to export.
+
+.PARAMETER Path
+Output file path.
+
+.PARAMETER Delimiter
+Delimiter used between exported values.
+
+.PARAMETER IncludeHeader
+Includes a header row with column names.
+
+.PARAMETER NullValue
+Replacement text for null values.
+
+.PARAMETER QuoteAll
+Quotes every field in the output.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER CommandTimeout
+Command timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path.
+
+.PARAMETER LogSql
+Includes SQL text in log entries.
+
+.PARAMETER LogParameters
+Includes parameter names and types in log entries.
+
+.EXAMPLE
+Export-OracleDelimitedFile -Credential $cred -DataSource 'mydb_low' -Sql 'select movie_id, movie_nm from ps_tools.movies' -Path 'C:\Temp\movies.txt' -IncludeHeader
+
+Exports query results to a delimited file.
+#>
 function Export-OracleDelimitedFile {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(

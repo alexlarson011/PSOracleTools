@@ -1,3 +1,22 @@
+<#
+.SYNOPSIS
+Removes a saved Oracle credential from the credential store.
+
+.DESCRIPTION
+Deletes a named credential record from the configured credential store.
+Supports ShouldProcess so it can be used with -WhatIf and -Confirm.
+
+.PARAMETER Name
+Credential name to remove.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.EXAMPLE
+Remove-OracleCredential -Name 'ProdLow' -Confirm:$false
+
+Removes a saved credential without prompting.
+#>
 function Remove-OracleCredential {
     [CmdletBinding(SupportsShouldProcess)]
     param(

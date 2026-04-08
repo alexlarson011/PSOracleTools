@@ -1,3 +1,40 @@
+<#
+.SYNOPSIS
+Runs a query that returns a single value.
+
+.DESCRIPTION
+Executes SQL and returns the first column of the first row from the result set.
+Supports raw connection strings, PSCredential input, or saved credential names.
+
+.PARAMETER Sql
+SQL text to execute.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER CommandTimeout
+Command timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path.
+
+.PARAMETER LogSql
+Includes SQL text in log entries.
+
+.PARAMETER LogParameters
+Includes parameter names and types in log entries.
+
+.EXAMPLE
+Invoke-OracleScalar -Credential $cred -DataSource 'mydb_low' -Sql 'select count(*) from ps_tools.movies'
+
+Returns a single scalar value.
+#>
 function Invoke-OracleScalar {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(

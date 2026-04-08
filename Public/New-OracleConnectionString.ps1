@@ -1,3 +1,37 @@
+<#
+.SYNOPSIS
+Builds an Oracle connection string for the managed driver.
+
+.DESCRIPTION
+Creates a connection string using a data source, user name, password, and optional pooling or timeout settings.
+Use the resulting string with the commands that accept -ConnectionString.
+
+.PARAMETER DataSource
+Oracle data source or TNS alias.
+
+.PARAMETER UserId
+Database user name.
+
+.PARAMETER Password
+Database password.
+
+.PARAMETER Pooling
+Enables or disables connection pooling.
+
+.PARAMETER MinPoolSize
+Minimum pool size when pooling is enabled.
+
+.PARAMETER MaxPoolSize
+Maximum pool size when pooling is enabled.
+
+.PARAMETER ConnectionTimeout
+Connection timeout in seconds.
+
+.EXAMPLE
+New-OracleConnectionString -DataSource 'mydb_low' -UserId 'app_user' -Password 'secret'
+
+Builds a simple Oracle connection string.
+#>
 function New-OracleConnectionString {
     [CmdletBinding()]
     param(

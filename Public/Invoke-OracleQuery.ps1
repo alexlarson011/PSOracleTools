@@ -1,3 +1,47 @@
+<#
+.SYNOPSIS
+Runs a query and returns result rows.
+
+.DESCRIPTION
+Executes a SQL query and converts the Oracle data reader into PowerShell objects.
+Supports raw connection strings, PSCredential input, or saved credential names.
+Optional logging can include lifecycle entries, SQL text, and parameter summaries.
+
+.PARAMETER Sql
+SQL query text to execute.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER CommandTimeout
+Command timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path.
+
+.PARAMETER LogSql
+Includes SQL text in log entries.
+
+.PARAMETER LogParameters
+Includes parameter names and types in log entries.
+
+.EXAMPLE
+Invoke-OracleQuery -Credential $cred -DataSource 'mydb_low' -Sql 'select movie_id, movie_nm from ps_tools.movies'
+
+Runs a query and returns rows as PowerShell objects.
+
+.EXAMPLE
+$p = New-OracleParameter -Name 'movie_id' -Value 1 -OracleDbType Int32
+Invoke-OracleQuery -CredentialName 'ProdLow' -CredentialDataSource 'mydb_low' -Sql 'select movie_id, movie_nm from ps_tools.movies where movie_id = :movie_id' -Parameters @($p)
+
+Runs a parameterized query using a saved credential.
+#>
 function Invoke-OracleQuery {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(

@@ -1,3 +1,41 @@
+<#
+.SYNOPSIS
+Runs a PL/SQL block.
+
+.DESCRIPTION
+Executes a PL/SQL block and returns any non-input parameters as output values.
+Supports raw connection strings, PSCredential input, or saved credential names.
+
+.PARAMETER PlSql
+PL/SQL block to execute.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as OracleParameter objects.
+
+.PARAMETER CommandTimeout
+Command timeout in seconds.
+
+.PARAMETER CredentialStorePath
+Optional custom path to the credential store JSON file.
+
+.PARAMETER Log
+Writes operational log entries to the information stream.
+
+.PARAMETER LogPath
+Optional log file path.
+
+.PARAMETER LogSql
+Includes PL/SQL text in log entries.
+
+.PARAMETER LogParameters
+Includes parameter names and types in log entries.
+
+.EXAMPLE
+$outCount = New-OracleParameter -Name 'movie_count' -OracleDbType Int32 -Direction Output
+Invoke-OraclePlSql -Credential $cred -DataSource 'mydb_low' -PlSql 'begin select count(*) into :movie_count from ps_tools.movies; end;' -Parameters @($outCount)
+
+Executes a PL/SQL block and returns output parameters.
+#>
 function Invoke-OraclePlSql {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
     param(
