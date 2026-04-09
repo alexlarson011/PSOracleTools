@@ -79,7 +79,7 @@ function Set-OracleConnectionProfile {
     $profiles = @()
 
     if (Test-Path -Path $path) {
-        $profiles = @(Get-Content -Path $path -Raw | ConvertFrom-Json)
+        $profiles = Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile'
     }
 
     $profiles = @($profiles | Where-Object { $_.Name -ne $Name })

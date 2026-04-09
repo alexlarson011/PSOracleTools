@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '0.3.2'
+    ModuleVersion     = '0.3.3'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -15,6 +15,8 @@
         'Set-OracleCredential',
         'Get-OracleCredential',
         'Remove-OracleCredential',
+        'Get-OracleModuleConfiguration',
+        'Set-OracleModuleConfiguration',
         'Set-OracleConnectionProfile',
         'Get-OracleConnectionProfile',
         'Remove-OracleConnectionProfile',
@@ -37,7 +39,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = 'https://github.com/alexlarson011/PSOracleTools/blob/main/LICENSE'
             ProjectUri = 'https://github.com/alexlarson011/PSOracleTools'
-            ReleaseNotes = 'Add resilient SQL command normalization, let SQL-oriented commands tolerate a trailing semicolon, and teach Invoke-OracleSqlFile to parse and execute multiple SQL statements plus slash-delimited PL/SQL blocks on one connection while keeping SQL*Plus directives out of scope.'
+            ReleaseNotes = 'Store credential and profile store paths in module state, default them to the AppData store on import, and add session-level Get/Set-OracleModuleConfiguration commands so callers can override store locations without repeating path arguments.'
         }
     }
 }

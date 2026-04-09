@@ -32,7 +32,7 @@ function Get-OracleConnectionProfile {
         throw "No profile store found at [$path]."
     }
 
-    $profiles = @(Get-Content -Path $path -Raw | ConvertFrom-Json)
+    $profiles = Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile'
 
     if ($Name) {
         $profile = $profiles | Where-Object { $_.Name -eq $Name } | Select-Object -First 1

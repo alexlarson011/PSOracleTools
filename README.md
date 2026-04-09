@@ -88,6 +88,14 @@ You can set a default store path with:
 $env:PSORACLETOOLS_CREDENTIAL_STORE = '.\config\oracle-creds.json'
 ```
 
+You can inspect or override the active module-level store paths for the current session with:
+
+```powershell
+Get-OracleModuleConfiguration
+Set-OracleModuleConfiguration -CredentialStorePath '.\config\oracle-creds.json'
+Set-OracleModuleConfiguration -ResetToDefault
+```
+
 ## Connection Profiles
 
 Connection profiles store non-secret defaults such as:
@@ -134,6 +142,20 @@ You can also set a default profile store path with:
 
 ```powershell
 $env:PSORACLETOOLS_PROFILE_STORE = '.\config\oracle-profiles.json'
+```
+
+The module initializes both store paths on import and, by default, uses:
+
+```text
+%APPDATA%\PSOracleTools\credentials.json
+%APPDATA%\PSOracleTools\profiles.json
+```
+
+You can override either path for the current session without passing it to every command:
+
+```powershell
+Set-OracleModuleConfiguration -ProfileStorePath '.\config\oracle-profiles.json'
+Invoke-OracleQuery -ProfileName 'ProdLow' -Sql 'select sysdate from dual'
 ```
 
 ## Query Examples

@@ -9,10 +9,9 @@ function Get-OracleCredentialStorePath {
         return $CredentialStorePath
     }
 
-    if ($env:PSORACLETOOLS_CREDENTIAL_STORE) {
-        return $env:PSORACLETOOLS_CREDENTIAL_STORE
+    if ($script:PSOracleTools.CredentialStorePath) {
+        return $script:PSOracleTools.CredentialStorePath
     }
 
-    $root = Get-OracleToolsRoot
-    return (Join-Path -Path $root -ChildPath 'credentials.json')
+    return (Get-OracleDefaultStoreConfiguration).CredentialStorePath
 }

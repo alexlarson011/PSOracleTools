@@ -56,7 +56,7 @@ function Set-OracleCredential {
     $records = @()
 
     if (Test-Path -Path $path) {
-        $records = Get-Content -Path $path -Raw | ConvertFrom-Json
+        $records = Read-OracleNamedRecordStore -Path $path -StoreDescription 'credential'
     }
 
     $records = @($records | Where-Object { $_.Name -ne $Name })

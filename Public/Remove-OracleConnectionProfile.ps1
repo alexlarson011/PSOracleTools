@@ -32,7 +32,7 @@ function Remove-OracleConnectionProfile {
         throw "No profile store found at [$path]."
     }
 
-    $profiles = @(Get-Content -Path $path -Raw | ConvertFrom-Json)
+    $profiles = Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile'
     $newProfiles = @($profiles | Where-Object { $_.Name -ne $Name })
 
     if ($PSCmdlet.ShouldProcess($Name, 'Remove Oracle connection profile')) {

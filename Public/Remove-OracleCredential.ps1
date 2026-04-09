@@ -33,7 +33,7 @@ function Remove-OracleCredential {
         throw 'No credential store found.'
     }
 
-    $records = @(Get-Content -Path $path -Raw | ConvertFrom-Json)
+    $records = Read-OracleNamedRecordStore -Path $path -StoreDescription 'credential'
     $newRecords = @($records | Where-Object { $_.Name -ne $Name })
 
     if ($PSCmdlet.ShouldProcess($Name, 'Remove Oracle credential')) {

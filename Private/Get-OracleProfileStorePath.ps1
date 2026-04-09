@@ -9,10 +9,9 @@ function Get-OracleProfileStorePath {
         return $ProfileStorePath
     }
 
-    if ($env:PSORACLETOOLS_PROFILE_STORE) {
-        return $env:PSORACLETOOLS_PROFILE_STORE
+    if ($script:PSOracleTools.ProfileStorePath) {
+        return $script:PSOracleTools.ProfileStorePath
     }
 
-    $root = Get-OracleToolsRoot
-    return (Join-Path -Path $root -ChildPath 'profiles.json')
+    return (Get-OracleDefaultStoreConfiguration).ProfileStorePath
 }

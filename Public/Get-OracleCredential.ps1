@@ -38,7 +38,7 @@ function Get-OracleCredential {
         throw 'No credential store found.'
     }
 
-    $records = Get-Content -Path $path -Raw | ConvertFrom-Json
+    $records = Read-OracleNamedRecordStore -Path $path -StoreDescription 'credential'
 
     if ($Name) {
         $record = $records | Where-Object { $_.Name -eq $Name } | Select-Object -First 1
