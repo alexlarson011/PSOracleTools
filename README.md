@@ -9,6 +9,7 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 - execute SQL files
 - export result sets to delimited text files
 - export result sets to CSV files
+- export result sets to native Excel workbooks (`.xlsx`)
 - use wallet and `tnsnames.ora` based connections through `TNS_ADMIN`
 - optionally log execution details for automation and troubleshooting
 
@@ -274,6 +275,34 @@ order by movie_id
 "@ `
   -Path '.\output\movies.csv'
 ```
+
+### Excel export
+
+```powershell
+Export-OracleExcel `
+  -ProfileName 'ProdLow' `
+  -Sql @"
+select movie_id, movie_nm, release_dt
+from ps_tools.movies
+order by movie_id
+"@ `
+  -Path '.\output\movies.xlsx' `
+  -WorksheetName 'Movies'
+```
+
+`Export-OracleExcel` creates a valid `.xlsx` workbook without requiring Microsoft Excel.
+By default it includes a plain header row and sizes columns to fit the exported content.
+Auto-filtering, frozen panes, and bold headers are available as opt-in options.
+
+Useful options include:
+
+- `-IncludeHeader:$false`
+- `-BoldHeader`
+- `-WorksheetName 'MySheet'`
+- `-AutoFilter`
+- `-FreezeHeaderRow`
+- `-AutoSizeColumns:$false`
+- `-MaxColumnWidth 40`
 
 ## Logging
 

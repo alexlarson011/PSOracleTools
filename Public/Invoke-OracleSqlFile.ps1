@@ -196,7 +196,7 @@ function Invoke-OracleSqlFile {
             Path           = $Path
             StatementCount = $statementResults.Count
             ElapsedMs      = $sw.ElapsedMilliseconds
-            Statements     = @($statementResults)
+            Statements     = $statementResults.ToArray()
         }
     }
     catch {

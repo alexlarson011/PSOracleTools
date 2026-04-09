@@ -19,5 +19,5 @@ function ConvertFrom-OracleDataReader {
         $rows.Add([pscustomobject]$obj)
     }
 
-    return $rows
+    return $rows.ToArray()
 }

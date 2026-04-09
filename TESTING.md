@@ -66,6 +66,12 @@ Export-OracleCsv `
   -ProfileName 'ProdLow' `
   -Sql 'select movie_id, movie_nm from ps_tools.movies' `
   -Path '.\output\movies.csv'
+
+Export-OracleExcel `
+  -ProfileName 'ProdLow' `
+  -Sql 'select movie_id, movie_nm, release_dt from ps_tools.movies' `
+  -Path '.\output\movies.xlsx' `
+  -WorksheetName 'Movies'
 ```
 
 ## SQL File Note
