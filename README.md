@@ -260,7 +260,8 @@ order by movie_id
 "@ `
   -Path '.\output\movies.txt' `
   -Delimiter '|' `
-  -IncludeHeader
+  -IncludeHeader `
+  -TrailingDelimiter
 ```
 
 ### CSV export

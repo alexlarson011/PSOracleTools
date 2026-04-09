@@ -24,6 +24,9 @@ Replacement text for null values.
 .PARAMETER QuoteAll
 Quotes every field in the output.
 
+.PARAMETER TrailingDelimiter
+Appends the delimiter character to the end of each written row.
+
 .PARAMETER Parameters
 Optional bind parameters supplied as a hashtable or OracleParameter objects.
 
@@ -91,6 +94,9 @@ function Export-OracleDelimitedFile {
 
         [Parameter()]
         [switch]$QuoteAll,
+
+        [Parameter()]
+        [switch]$TrailingDelimiter,
 
         [Parameter()]
         $Parameters,
@@ -203,7 +209,12 @@ function Export-OracleDelimitedFile {
                 ConvertTo-DelimitedValue -Value $value -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll
             }
 
-            $writer.WriteLine(($line -join $Delimiter))
+            $outputLine = ($line -join $Delimiter)
+            if ($TrailingDelimiter) {
+                $outputLine += $Delimiter
+            }
+
+            $writer.WriteLine($outputLine)
             $rowCount++
         }
 
