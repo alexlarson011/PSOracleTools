@@ -175,7 +175,7 @@ function Export-OracleDelimitedFile {
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile started; DataSource={0}; OutputPath={1}; CommandTimeout={2}" -f $targetDataSource, $Path, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile SQL: {0}" -f $normalizedSql)
+                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile SQL: {0}" -f (ConvertTo-OracleLogText -Text $normalizedSql))
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))

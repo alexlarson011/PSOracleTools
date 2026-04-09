@@ -62,6 +62,10 @@ function Split-OracleScriptStatements {
             return $null
         }
 
+        if (Test-OracleClientDirective -StatementText $normalizedStatement) {
+            return $null
+        }
+
         return [pscustomobject]@{
             Index = $Index
             Kind  = $Kind

@@ -135,7 +135,7 @@ function Invoke-OracleScalar {
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar SQL: {0}" -f $normalizedSql)
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar SQL: {0}" -f (ConvertTo-OracleLogText -Text $normalizedSql))
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OracleScalar Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))

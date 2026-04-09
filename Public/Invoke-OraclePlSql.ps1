@@ -137,7 +137,7 @@ function Invoke-OraclePlSql {
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Block: {0}" -f $normalizedPlSql)
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Block: {0}" -f (ConvertTo-OracleLogText -Text $normalizedPlSql))
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))

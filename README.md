@@ -245,7 +245,8 @@ Invoke-OracleSqlFile `
 
 `Invoke-OracleSqlFile` parses and executes supported statements in order on one Oracle connection.
 It supports semicolon-terminated SQL statements and PL/SQL-style blocks terminated by a slash on its own line.
-It is still not a SQL*Plus-style script runner and does not process directives such as `set`, `spool`, `prompt`, `define`, or `@child.sql`.
+It skips common client-side directives such as `set`, `spool`, `prompt`, `define`, `undefine`, `remark`, and `whenever`.
+It is still not a full SQL*Plus-style script runner and does not process commands such as `@child.sql`.
 
 ## Export Example
 

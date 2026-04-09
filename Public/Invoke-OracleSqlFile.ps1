@@ -152,7 +152,7 @@ function Invoke-OracleSqlFile {
                 if ($Log -or $LogPath) {
                     Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile statement started; Path={0}; DataSource={1}; StatementIndex={2}; Kind={3}" -f $Path, $connection.DataSource, $statement.Index, $statement.Kind)
                     if ($LogSql) {
-                        Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile statement text [{0}]: {1}" -f $statement.Index, $statement.Text)
+                        Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile statement text [{0}]: {1}" -f $statement.Index, (ConvertTo-OracleLogText -Text $statement.Text))
                     }
                 }
 

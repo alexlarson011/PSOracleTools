@@ -193,7 +193,7 @@ function Export-OracleExcel {
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel started; DataSource={0}; OutputPath={1}; WorksheetName={2}; CommandTimeout={3}" -f $targetDataSource, $Path, $WorksheetName, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel SQL: {0}" -f $normalizedSql)
+                Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel SQL: {0}" -f (ConvertTo-OracleLogText -Text $normalizedSql))
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
