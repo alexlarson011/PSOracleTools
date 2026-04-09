@@ -70,11 +70,15 @@ Export-OracleCsv `
 
 ## SQL File Note
 
-`Invoke-OracleSqlFile` executes the contents of a file as one Oracle command text payload.
+`Invoke-OracleSqlFile` parses and executes supported statements in order on one Oracle connection.
 That works well for many DDL, DML, and PL/SQL scripts.
+
+Supported script boundaries:
+
+- SQL statements terminated by `;`
+- PL/SQL-style blocks terminated by `/` on its own line
 
 It is not intended to emulate SQL*Plus or SQLcl script parsing. In particular, it does not currently handle:
 
-- multiple independent SQL statements split and executed one by one
-- SQL*Plus directives such as `set`, `spool`, `prompt`, or `whenever sqlerror`
-- slash-delimited client script behavior beyond trimming one trailing `/`
+- SQL*Plus directives such as `set`, `spool`, `prompt`, `define`, `whenever sqlerror`, or `@child.sql`
+- broader client-side substitution behavior

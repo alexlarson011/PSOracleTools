@@ -164,10 +164,12 @@ function Export-OracleDelimitedFile {
             }
         }
 
+        $normalizedSql = Normalize-OracleCommandText -Text $Sql -Mode Sql
+
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile started; DataSource={0}; OutputPath={1}; CommandTimeout={2}" -f $targetDataSource, $Path, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile SQL: {0}" -f $Sql)
+                Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile SQL: {0}" -f $normalizedSql)
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
@@ -182,7 +184,7 @@ function Export-OracleDelimitedFile {
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
 
-        $command = New-OracleCommand -Connection $connection -CommandText $Sql -CommandTimeout $CommandTimeout
+        $command = New-OracleCommand -Connection $connection -CommandText $normalizedSql -CommandTimeout $CommandTimeout
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         $reader = $command.ExecuteReader()

@@ -132,10 +132,12 @@ function Invoke-OraclePlSql {
             }
         }
 
+        $normalizedPlSql = Normalize-OracleCommandText -Text $PlSql -Mode PlSql
+
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Block: {0}" -f $PlSql)
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Block: {0}" -f $normalizedPlSql)
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
@@ -145,7 +147,7 @@ function Invoke-OraclePlSql {
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
 
-        $command = New-OracleCommand -Connection $connection -CommandText $PlSql -CommandTimeout $CommandTimeout
+        $command = New-OracleCommand -Connection $connection -CommandText $normalizedPlSql -CommandTimeout $CommandTimeout
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         [void]$command.ExecuteNonQuery()

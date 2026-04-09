@@ -138,10 +138,12 @@ function Invoke-OracleQuery {
             }
         }
 
+        $normalizedSql = Normalize-OracleCommandText -Text $Sql -Mode Sql
+
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery SQL: {0}" -f $Sql)
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery SQL: {0}" -f $normalizedSql)
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
@@ -151,7 +153,7 @@ function Invoke-OracleQuery {
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
 
-        $command = New-OracleCommand -Connection $connection -CommandText $Sql -CommandTimeout $CommandTimeout
+        $command = New-OracleCommand -Connection $connection -CommandText $normalizedSql -CommandTimeout $CommandTimeout
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         $reader = $command.ExecuteReader()

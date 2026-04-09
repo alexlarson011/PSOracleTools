@@ -131,10 +131,12 @@ function Invoke-OracleNonQuery {
             }
         }
 
+        $normalizedSql = Normalize-OracleCommandText -Text $Sql -Mode SqlOrPlSql
+
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OracleNonQuery started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
             if ($LogSql) {
-                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleNonQuery SQL: {0}" -f $Sql)
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleNonQuery SQL: {0}" -f $normalizedSql)
             }
             if ($LogParameters) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OracleNonQuery Parameters: {0}" -f ((Get-OracleParameterSummary -Parameters $Parameters) -join ', '))
@@ -144,7 +146,7 @@ function Invoke-OracleNonQuery {
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
 
-        $command = New-OracleCommand -Connection $connection -CommandText $Sql -CommandTimeout $CommandTimeout
+        $command = New-OracleCommand -Connection $connection -CommandText $normalizedSql -CommandTimeout $CommandTimeout
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         $rowsAffected = $command.ExecuteNonQuery()

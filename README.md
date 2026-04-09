@@ -220,8 +220,9 @@ Invoke-OracleSqlFile `
   -LogPath '.\logs\oracle.log'
 ```
 
-`Invoke-OracleSqlFile` executes the file contents as one Oracle command text payload.
-It works well for many DDL, DML, and PL/SQL scripts, but it is not a SQL*Plus-style script runner and does not process SQL*Plus directives or split multiple independent statements automatically.
+`Invoke-OracleSqlFile` parses and executes supported statements in order on one Oracle connection.
+It supports semicolon-terminated SQL statements and PL/SQL-style blocks terminated by a slash on its own line.
+It is still not a SQL*Plus-style script runner and does not process directives such as `set`, `spool`, `prompt`, `define`, or `@child.sql`.
 
 ## Export Example
 
@@ -277,12 +278,12 @@ It does not log passwords or decrypted credentials.
 
 ## SQL Text Notes
 
-For the SQL-oriented commands, send plain SQL without a trailing semicolon:
+For the SQL-oriented commands, a single trailing semicolon is now tolerated and removed automatically for plain SQL:
 
 ```sql
 select movie_id, movie_nm
 from ps_tools.movies
-where movie_id = :movie_id
+where movie_id = :movie_id;
 ```
 
 For PL/SQL blocks, internal semicolons are correct:
@@ -293,7 +294,8 @@ begin
 end;
 ```
 
-Do not include a trailing `/` terminator in command text.
+For direct command text, do not include a trailing `/` terminator.
+For `Invoke-OracleSqlFile`, a slash on its own line is supported as a PL/SQL block terminator.
 
 ## Help
 
