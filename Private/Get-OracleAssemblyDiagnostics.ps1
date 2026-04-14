@@ -22,9 +22,19 @@ function Get-OracleAssemblyDiagnostics {
         'System.Numerics',
         'System.Security',
         'System.Transactions',
+        'System.ValueTuple',
         'System.Web',
         'System.Xml',
         'System.Xml.Linq'
+    )
+
+    $optionalAssemblyNames = @(
+        'Oracle.ManagedDataAccess.Aws',
+        'Oracle.ManagedDataAccess.Azure',
+        'Oracle.ManagedDataAccess.ConfigFile',
+        'Oracle.ManagedDataAccess.Gcp',
+        'Oracle.ManagedDataAccess.Kerberos',
+        'Oracle.ManagedDataAccess.Oci'
     )
 
     function Get-OracleAssemblyIdentity {
@@ -180,6 +190,9 @@ function Get-OracleAssemblyDiagnostics {
                 else {
                     $status = 'LoadedLowerVersion'
                 }
+            }
+            elseif ($reference.ReferenceName -in $optionalAssemblyNames) {
+                $status = 'Optional'
             }
             elseif ($reference.ReferenceName -notin $frameworkAssemblyNames) {
                 $status = 'Missing'

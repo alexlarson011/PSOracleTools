@@ -10,13 +10,15 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Path $PSScriptRoot -Parent
-$libPath = Join-Path -Path $repoRoot -ChildPath 'lib'
+
+. (Join-Path -Path $repoRoot -ChildPath 'Private\Get-OracleBundledLibPath.ps1')
+. (Join-Path -Path $repoRoot -ChildPath 'Private\Get-OracleAssemblyDiagnostics.ps1')
+
+$libPath = Get-OracleBundledLibPath -ModuleRoot $repoRoot
 
 if (-not $DllPath) {
-    $DllPath = Join-Path -Path $libPath -ChildPath 'Oracle.ManagedDataAccess.dll'
+    $DllPath = Get-OracleBundledDllPath -ModuleRoot $repoRoot
 }
-
-. (Join-Path -Path $repoRoot -ChildPath 'Private\Get-OracleAssemblyDiagnostics.ps1')
 
 $diagnostics = Get-OracleAssemblyDiagnostics -DllPath $DllPath -LibPath $libPath
 
@@ -37,7 +39,7 @@ if ($diagnostics.Issues.Count -gt 0) {
         Format-Table -AutoSize
 }
 else {
-    Write-Host 'No dependency mismatches detected in bundled assemblies.'
+    Write-Host 'No required dependency mismatches detected in bundled assemblies.'
 }
 
 Write-Host ''
@@ -55,14 +57,22 @@ if ($TryModuleImport) {
     Write-Host ''
     Write-Host 'Module Import'
 
+    $manifestPath = Join-Path -Path $repoRoot -ChildPath 'PSOracleTools.psd1'
+
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        Write-Warning ("Module manifest not found at [{0}]. The diagnostics script is running, but the module files were not fully deployed." -f $manifestPath)
+        return
+    }
+
     try {
-        Import-Module (Join-Path -Path $repoRoot -ChildPath 'PSOracleTools.psd1') -Force -ErrorAction Stop | Out-Null
+        Import-Module $manifestPath -Force -ErrorAction Stop | Out-Null
         Write-Host 'Import succeeded.'
     }
     catch {
         Write-Warning $_.Exception.Message
 
-        if ($_.Exception.LoaderExceptions) {
+        $loaderExceptionsProperty = $_.Exception.PSObject.Properties['LoaderExceptions']
+        if ($loaderExceptionsProperty -and $loaderExceptionsProperty.Value) {
             $_.Exception.LoaderExceptions |
                 Where-Object { $_ } |
                 ForEach-Object { Write-Warning $_.Message }

@@ -18,7 +18,7 @@ function Initialize-OracleClient {
     [CmdletBinding()]
     param(
         [Parameter()]
-        [string]$DllPath = (Join-Path -Path $PSScriptRoot.Replace('\Public', '') -ChildPath 'lib\Oracle.ManagedDataAccess.dll')
+        [string]$DllPath = (Get-OracleBundledDllPath -ModuleRoot $PSScriptRoot.Replace('\Public', ''))
     )
 
     Import-OracleAssembly -DllPath $DllPath
