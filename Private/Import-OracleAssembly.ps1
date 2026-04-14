@@ -43,10 +43,16 @@ function Import-OracleAssembly {
                 $_.Exception.Message
             }
 
-            throw "Failed to load Oracle managed driver from [$DllPath]. $details"
+            $diagnostics = Get-OracleAssemblyDiagnostics -DllPath $DllPath -LibPath $libPath
+            $summary = Format-OracleAssemblyDiagnosticsSummary -Diagnostics $diagnostics
+
+            throw "Failed to load Oracle managed driver from [$DllPath]. $details`n$summary"
         }
         catch {
-            throw "Failed to load Oracle managed driver from [$DllPath]. $(Get-OracleExceptionMessage -Exception $_.Exception)"
+            $diagnostics = Get-OracleAssemblyDiagnostics -DllPath $DllPath -LibPath $libPath
+            $summary = Format-OracleAssemblyDiagnosticsSummary -Diagnostics $diagnostics
+
+            throw "Failed to load Oracle managed driver from [$DllPath]. $(Get-OracleExceptionMessage -Exception $_.Exception)`n$summary"
         }
     }
 
