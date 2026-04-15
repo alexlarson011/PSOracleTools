@@ -23,6 +23,8 @@ Get-ChildItem -Path $publicPath -Filter '*.ps1' -File |
     Sort-Object Name |
     ForEach-Object { . $_.FullName }
 
+$script:PSOracleTools.LibPath = Get-OracleBundledLibPath -ModuleRoot $PSScriptRoot
+
 Initialize-OracleStoreConfiguration | Out-Null
 Initialize-OracleClient | Out-Null
 

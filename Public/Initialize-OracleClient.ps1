@@ -18,18 +18,20 @@ function Initialize-OracleClient {
     [CmdletBinding()]
     param(
         [Parameter()]
-        [string]$DllPath = (Join-Path -Path $PSScriptRoot.Replace('\Public', '') -ChildPath 'lib\Oracle.ManagedDataAccess.dll')
+        [string]$DllPath = (Get-OracleBundledDllPath -ModuleRoot $PSScriptRoot.Replace('\Public', ''))
     )
 
     Import-OracleAssembly -DllPath $DllPath
     $configuration = Set-OracleClientConfiguration
 
     [pscustomobject]@{
-        Success        = $true
-        DllPath        = $DllPath
-        Loaded         = (Test-OracleAssemblyLoaded)
-        TnsAdmin       = $configuration.TnsAdmin
-        WalletLocation = $configuration.WalletLocation
-        Timestamp      = Get-Date
+        Success                     = $true
+        DllPath                     = $DllPath
+        Loaded                      = (Test-OracleAssemblyLoaded)
+        TnsAdmin                    = $configuration.TnsAdmin
+        WalletLocation              = $configuration.WalletLocation
+        OpenTelemetryTracing        = $configuration.OpenTelemetryTracing
+        DatabaseOpenTelemetryTracing = $configuration.DatabaseOpenTelemetryTracing
+        Timestamp                   = Get-Date
     }
 }
