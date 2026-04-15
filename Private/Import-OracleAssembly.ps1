@@ -11,35 +11,11 @@ function Import-OracleAssembly {
 
     $libPath = Split-Path -Path $DllPath -Parent
     $script:PSOracleTools.LibPath = $libPath
+    Initialize-OracleAssemblyCatalog -LibPath $libPath
     Register-OracleAssemblyResolver -LibPath $libPath
 
     if (-not (Test-OracleAssemblyLoaded)) {
         try {
-            $preloadAssemblyNames = @(
-                'System.Buffers.dll',
-                'System.Diagnostics.DiagnosticSource.dll',
-                'System.Memory.dll',
-                'System.Numerics.Vectors.dll',
-                'System.Runtime.CompilerServices.Unsafe.dll',
-                'System.Threading.Tasks.Extensions.dll'
-            )
-
-            Get-ChildItem -Path $libPath -Filter '*.dll' -File |
-                Where-Object {
-                    $_.Name -in $preloadAssemblyNames
-                } |
-                Sort-Object Name |
-                ForEach-Object {
-                    $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($_.FullName)
-                    $alreadyLoaded = [AppDomain]::CurrentDomain.GetAssemblies() |
-                        Where-Object { $_.GetName().Name -eq $assemblyName.Name } |
-                        Select-Object -First 1
-
-                    if (-not $alreadyLoaded) {
-                        [System.Reflection.Assembly]::LoadFrom($_.FullName) | Out-Null
-                    }
-                }
-
             [System.Reflection.Assembly]::LoadFrom($DllPath) | Out-Null
         }
         catch [System.Reflection.ReflectionTypeLoadException] {

@@ -16,16 +16,18 @@ function Register-OracleAssemblyResolver {
         $requestedName = $requestedAssemblyName.Name
 
         $loadedAssembly = [AppDomain]::CurrentDomain.GetAssemblies() |
-            Where-Object { $_.GetName().Name -eq $requestedName } |
+            Where-Object {
+                $_.GetName().Name -eq $requestedName -and
+                $_.GetName().Version -eq $requestedAssemblyName.Version
+            } |
             Select-Object -First 1
 
         if ($loadedAssembly) {
             return $loadedAssembly
         }
 
-        $candidatePath = Join-Path -Path $script:PSOracleTools.LibPath -ChildPath "$requestedName.dll"
-
-        if (-not (Test-Path -Path $candidatePath -PathType Leaf)) {
+        $candidatePath = Find-OracleAssemblyPath -RequestedAssemblyName $requestedAssemblyName
+        if (-not $candidatePath) {
             return $null
         }
 

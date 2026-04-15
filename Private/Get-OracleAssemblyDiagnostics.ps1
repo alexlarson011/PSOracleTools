@@ -114,14 +114,18 @@ function Get-OracleAssemblyDiagnostics {
     }
 
     $bundledAssemblies = @(
-        Get-ChildItem -Path $LibPath -Filter '*.dll' -File -ErrorAction SilentlyContinue |
+        Get-ChildItem -Path $LibPath -Filter '*.dll' -File -Recurse -ErrorAction SilentlyContinue |
             Sort-Object Name |
             ForEach-Object { Get-OracleAssemblyIdentity -Path $_.FullName }
     )
 
     $bundledByName = @{}
     foreach ($assembly in $bundledAssemblies | Where-Object { $_.Name }) {
-        $bundledByName[$assembly.Name] = $assembly
+        if (-not $bundledByName.ContainsKey($assembly.Name)) {
+            $bundledByName[$assembly.Name] = New-Object System.Collections.ArrayList
+        }
+
+        [void]$bundledByName[$assembly.Name].Add($assembly)
     }
 
     $interestingNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
@@ -140,7 +144,18 @@ function Get-OracleAssemblyDiagnostics {
 
             $bundledMatch = $null
             if ($bundledByName.ContainsKey($reference.ReferenceName)) {
-                $bundledMatch = $bundledByName[$reference.ReferenceName]
+                $candidateAssemblies = @($bundledByName[$reference.ReferenceName])
+                $bundledMatch = @(
+                    $candidateAssemblies |
+                        Where-Object { $_.Version -eq $reference.ReferenceVersion } |
+                        Select-Object -First 1
+                ) | Select-Object -First 1
+
+                if (-not $bundledMatch) {
+                    $bundledMatch = $candidateAssemblies |
+                        Sort-Object Version -Descending |
+                        Select-Object -First 1
+                }
             }
 
             $loadedMatches = @(
@@ -231,7 +246,7 @@ function Get-OracleAssemblyDiagnostics {
     $issues = @(
         $referenceStatus |
             Where-Object {
-                $_.Status -in @('Missing', 'BundledLowerVersion', 'LoadedLowerVersion')
+                $_.Status -in @('Missing', 'BundledLowerVersion', 'LoadedLowerVersion', 'BundledHigherVersion', 'LoadedHigherVersion')
             } |
             Sort-Object AssemblyName, ReferenceName
     )
