@@ -15,6 +15,23 @@ function Import-OracleAssembly {
 
     if (-not (Test-OracleAssemblyLoaded)) {
         try {
+            Get-ChildItem -Path $libPath -Filter '*.dll' -File |
+                Where-Object {
+                    $_.Name -ne (Split-Path -Path $DllPath -Leaf) -and
+                    $_.Name -notlike 'Oracle.ManagedDataAccess*.dll'
+                } |
+                Sort-Object Name |
+                ForEach-Object {
+                    $assemblyName = [System.Reflection.AssemblyName]::GetAssemblyName($_.FullName)
+                    $alreadyLoaded = [AppDomain]::CurrentDomain.GetAssemblies() |
+                        Where-Object { $_.GetName().Name -eq $assemblyName.Name } |
+                        Select-Object -First 1
+
+                    if (-not $alreadyLoaded) {
+                        [System.Reflection.Assembly]::LoadFrom($_.FullName) | Out-Null
+                    }
+                }
+
             [System.Reflection.Assembly]::LoadFrom($DllPath) | Out-Null
         }
         catch [System.Reflection.ReflectionTypeLoadException] {

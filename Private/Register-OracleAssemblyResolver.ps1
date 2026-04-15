@@ -12,7 +12,8 @@ function Register-OracleAssemblyResolver {
     $script:PSOracleTools.AssemblyResolver = [System.ResolveEventHandler]{
         param($sender, $resolveEventArgs)
 
-        $requestedName = (New-Object System.Reflection.AssemblyName($resolveEventArgs.Name)).Name
+        $requestedAssemblyName = New-Object System.Reflection.AssemblyName($resolveEventArgs.Name)
+        $requestedName = $requestedAssemblyName.Name
 
         $loadedAssembly = [AppDomain]::CurrentDomain.GetAssemblies() |
             Where-Object { $_.GetName().Name -eq $requestedName } |
@@ -24,11 +25,21 @@ function Register-OracleAssemblyResolver {
 
         $candidatePath = Join-Path -Path $script:PSOracleTools.LibPath -ChildPath "$requestedName.dll"
 
-        if (Test-Path -Path $candidatePath -PathType Leaf) {
-            return [System.Reflection.Assembly]::LoadFrom($candidatePath)
+        if (-not (Test-Path -Path $candidatePath -PathType Leaf)) {
+            return $null
         }
 
-        return $null
+        $resolveKey = '{0}|{1}' -f $requestedAssemblyName.FullName, $candidatePath
+        if (-not $script:PSOracleTools.AssemblyResolveInProgress.Add($resolveKey)) {
+            return $null
+        }
+
+        try {
+            return [System.Reflection.Assembly]::LoadFrom($candidatePath)
+        }
+        finally {
+            [void]$script:PSOracleTools.AssemblyResolveInProgress.Remove($resolveKey)
+        }
     }
 
     [AppDomain]::CurrentDomain.add_AssemblyResolve($script:PSOracleTools.AssemblyResolver)

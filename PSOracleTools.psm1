@@ -10,6 +10,7 @@ $script:PSOracleTools = @{
     ProfileStorePath           = $null
     AssemblyResolver           = $null
     AssemblyResolverRegistered = $false
+    AssemblyResolveInProgress  = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
 }
 
 $privatePath = Join-Path -Path $PSScriptRoot -ChildPath 'Private'
