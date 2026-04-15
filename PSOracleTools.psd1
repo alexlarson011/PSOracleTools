@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '0.3.4'
+    ModuleVersion     = '0.3.5'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -40,7 +40,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = 'https://github.com/alexlarson011/PSOracleTools/blob/main/LICENSE'
             ProjectUri = 'https://github.com/alexlarson011/PSOracleTools'
-            ReleaseNotes = 'Add native Export-OracleExcel workbook export with opt-in filters, frozen panes, and bold headers, plus worksheet sizing options and session-aware credential/profile store configuration.'
+            ReleaseNotes = 'Add Oracle assembly diagnostics and a coherent net472 dependency bundle, disable ODP.NET OpenTelemetry tracing by default for shared-host stability, and add an out-of-process Windows PowerShell wrapper for JAMS-hosted jobs.'
         }
     }
 }
