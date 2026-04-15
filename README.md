@@ -30,6 +30,17 @@ You can run a lightweight repo-local validation pass with:
 .\scripts\Validate-Module.ps1
 ```
 
+## JAMS Note
+
+If a script works in a normal `powershell.exe` session on a server but fails only when JAMS runs it through the in-process PowerShell host, use the wrapper at `.\scripts\Invoke-InFreshWindowsPowerShell.ps1` so JAMS launches a fresh Windows PowerShell process instead of hosting the script in-process:
+
+```powershell
+.\scripts\Invoke-InFreshWindowsPowerShell.ps1 `
+  -ScriptPath 'F:\SCHED_JOBS\Finance\meu\MEUInterfaceLoad.ps1'
+```
+
+You can also pass arguments through with `-ScriptArguments @('value1', 'value2')`.
+
 ## Importing The Module
 
 ```powershell

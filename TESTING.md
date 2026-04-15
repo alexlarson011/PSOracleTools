@@ -10,6 +10,13 @@ Run from the repository root:
 .\scripts\Validate-Module.ps1
 ```
 
+If a scheduler or automation host is suspect, also test out-of-process execution:
+
+```powershell
+.\scripts\Invoke-InFreshWindowsPowerShell.ps1 `
+  -ScriptPath '.\your-job-script.ps1'
+```
+
 This checks:
 
 - manifest validity

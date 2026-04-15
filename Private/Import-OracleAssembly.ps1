@@ -11,7 +11,6 @@ function Import-OracleAssembly {
 
     $libPath = Split-Path -Path $DllPath -Parent
     $script:PSOracleTools.LibPath = $libPath
-    Initialize-OracleAssemblyCatalog -LibPath $libPath
     Register-OracleAssemblyResolver -LibPath $libPath
 
     if (-not (Test-OracleAssemblyLoaded)) {
