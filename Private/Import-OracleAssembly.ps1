@@ -15,10 +15,18 @@ function Import-OracleAssembly {
 
     if (-not (Test-OracleAssemblyLoaded)) {
         try {
+            $preloadAssemblyNames = @(
+                'System.Buffers.dll',
+                'System.Diagnostics.DiagnosticSource.dll',
+                'System.Memory.dll',
+                'System.Numerics.Vectors.dll',
+                'System.Runtime.CompilerServices.Unsafe.dll',
+                'System.Threading.Tasks.Extensions.dll'
+            )
+
             Get-ChildItem -Path $libPath -Filter '*.dll' -File |
                 Where-Object {
-                    $_.Name -ne (Split-Path -Path $DllPath -Leaf) -and
-                    $_.Name -notlike 'Oracle.ManagedDataAccess*.dll'
+                    $_.Name -in $preloadAssemblyNames
                 } |
                 Sort-Object Name |
                 ForEach-Object {
