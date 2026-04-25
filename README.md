@@ -305,6 +305,18 @@ It supports semicolon-terminated SQL statements and PL/SQL-style blocks terminat
 It skips common client-side directives such as `set`, `spool`, `prompt`, `define`, `undefine`, `remark`, and `whenever`.
 It is still not a full SQL*Plus-style script runner and does not process commands such as `@child.sql`.
 
+For data-load or refresh scripts, you can run all statements in one transaction:
+
+```powershell
+Invoke-OracleSqlFile `
+  -ProfileName 'ProdLow' `
+  -Path '.\scripts\load_movies.sql' `
+  -UseTransaction
+```
+
+When `-UseTransaction` is supplied, the command commits only after every statement succeeds and rolls back if any statement fails.
+Because Oracle can implicitly commit DDL, obvious DDL/DCL statements such as `create`, `alter`, `drop`, `truncate`, `grant`, and `revoke` are blocked with `-UseTransaction` unless you also pass `-AllowDdlInTransaction`.
+
 ## Export Example
 
 ```powershell

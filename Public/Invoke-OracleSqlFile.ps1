@@ -29,6 +29,12 @@ Optional log file path.
 .PARAMETER LogSql
 Includes SQL text in log entries.
 
+.PARAMETER UseTransaction
+Executes all statements in one Oracle transaction. Commits only after every statement succeeds and rolls back on failure.
+
+.PARAMETER AllowDdlInTransaction
+Allows obvious DDL or DCL statements when -UseTransaction is supplied. Oracle may implicitly commit DDL, so rollback safety is not guaranteed for those scripts.
+
 .EXAMPLE
 Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\refresh_movies.sql'
 
@@ -38,6 +44,11 @@ Executes all supported statements from a SQL file using a saved connection profi
 Invoke-OracleSqlFile -ConnectionString $cs -Path '.\scripts\deploy_movies.sql' -Log -LogPath '.\logs\oracle.log'
 
 Executes a SQL file with logging enabled.
+
+.EXAMPLE
+Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\load_movies.sql' -UseTransaction
+
+Executes a SQL file in one transaction and rolls back all statements if any statement fails.
 #>
 function Invoke-OracleSqlFile {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
@@ -79,7 +90,13 @@ function Invoke-OracleSqlFile {
         [string]$LogPath,
 
         [Parameter()]
-        [switch]$LogSql
+        [switch]$LogSql,
+
+        [Parameter()]
+        [switch]$UseTransaction,
+
+        [Parameter()]
+        [switch]$AllowDdlInTransaction
     )
 
     if (-not (Test-Path -Path $Path -PathType Leaf)) {
@@ -96,9 +113,19 @@ function Invoke-OracleSqlFile {
         throw "SQL file did not contain any executable statements: $Path"
     }
 
+    if ($UseTransaction -and -not $AllowDdlInTransaction) {
+        $ddlStatements = @($statements | Where-Object { Test-OracleDdlStatement -StatementText $_.Text })
+        if ($ddlStatements.Count -gt 0) {
+            throw ("-UseTransaction cannot be used with DDL/DCL statement(s) without -AllowDdlInTransaction. Oracle can implicitly commit DDL. Statement index(es): {0}" -f (($ddlStatements | Select-Object -ExpandProperty Index) -join ', '))
+        }
+    }
+
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
+    $transaction = $null
+    $transactionCommitted = $false
+    $transactionRolledBack = $false
     $targetDataSource = $null
     $resolvedProfile = $null
     $statementResults = New-Object System.Collections.Generic.List[object]
@@ -147,11 +174,18 @@ function Invoke-OracleSqlFile {
         }
 
         if ($Log -or $LogPath) {
-            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile started; Path={0}; DataSource={1}; StatementCount={2}; CommandTimeout={3}" -f $Path, $targetDataSource, $statements.Count, $CommandTimeout)
+            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile started; Path={0}; DataSource={1}; StatementCount={2}; CommandTimeout={3}; UseTransaction={4}" -f $Path, $targetDataSource, $statements.Count, $CommandTimeout, [bool]$UseTransaction)
         }
 
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
+
+        if ($UseTransaction) {
+            $transaction = $connection.BeginTransaction()
+            if ($Log -or $LogPath) {
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile transaction started; Path={0}; DataSource={1}" -f $Path, $connection.DataSource)
+            }
+        }
 
         foreach ($statement in $statements) {
             $statementSw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -165,6 +199,9 @@ function Invoke-OracleSqlFile {
                 }
 
                 $command = New-OracleCommand -Connection $connection -CommandText $statement.Text -CommandTimeout $CommandTimeout
+                if ($transaction) {
+                    $command.Transaction = $transaction
+                }
                 $rowsAffected = $command.ExecuteNonQuery()
                 $statementSw.Stop()
 
@@ -193,6 +230,14 @@ function Invoke-OracleSqlFile {
             }
         }
 
+        if ($transaction) {
+            $transaction.Commit()
+            $transactionCommitted = $true
+            if ($Log -or $LogPath) {
+                Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile transaction committed; Path={0}; DataSource={1}" -f $Path, $connection.DataSource)
+            }
+        }
+
         $sw.Stop()
 
         if ($Log -or $LogPath) {
@@ -204,11 +249,29 @@ function Invoke-OracleSqlFile {
             Path           = $Path
             StatementCount = $statementResults.Count
             ElapsedMs      = $sw.ElapsedMilliseconds
+            TransactionUsed = [bool]$UseTransaction
+            Committed      = $transactionCommitted
+            RolledBack     = $transactionRolledBack
             Statements     = $statementResults.ToArray()
         }
     }
     catch {
         $sw.Stop()
+        if ($transaction -and -not $transactionCommitted -and -not $transactionRolledBack) {
+            try {
+                $transaction.Rollback()
+                $transactionRolledBack = $true
+                if ($Log -or $LogPath) {
+                    Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile transaction rolled back; Path={0}; DataSource={1}" -f $Path, $targetDataSource)
+                }
+            }
+            catch {
+                if ($Log -or $LogPath) {
+                    Write-OracleLog -Path $LogPath -Level ERROR -Message ("Invoke-OracleSqlFile transaction rollback failed; Path={0}; DataSource={1}; Error={2}" -f $Path, $targetDataSource, (Get-OracleExceptionMessage -Exception $_.Exception))
+                }
+            }
+        }
+
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Level ERROR -Message ("Invoke-OracleSqlFile failed; Path={0}; DataSource={1}; ElapsedMs={2}; Error={3}" -f $Path, $targetDataSource, $sw.ElapsedMilliseconds, (Get-OracleExceptionMessage -Exception $_.Exception))
         }
@@ -216,6 +279,7 @@ function Invoke-OracleSqlFile {
     }
     finally {
         Close-OracleResource -Object $command
+        Close-OracleResource -Object $transaction
         Close-OracleResource -Object $connection
     }
 }

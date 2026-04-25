@@ -80,4 +80,16 @@ if ($parsedStatements.Count -ne 1 -or $parsedStatements[0].Text -ne 'select * fr
     throw 'SQL script parser directive validation failed.'
 }
 
+Write-Host 'Checking SQL transaction DDL detection...'
+$ddlDetection = & $module {
+    [pscustomobject]@{
+        SelectIsDdl = Test-OracleDdlStatement -StatementText 'select * from dual'
+        CreateIsDdl = Test-OracleDdlStatement -StatementText "/* comment */`ncreate table t (id number)"
+    }
+}
+
+if ($ddlDetection.SelectIsDdl -or -not $ddlDetection.CreateIsDdl) {
+    throw 'SQL transaction DDL detection validation failed.'
+}
+
 Write-Host 'Validation succeeded.'

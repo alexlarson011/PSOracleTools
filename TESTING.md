@@ -77,6 +77,11 @@ Invoke-OracleSqlFile `
   -ProfileName 'ProdLow' `
   -Path '.\scripts\sample.sql' `
   -Log
+
+Invoke-OracleSqlFile `
+  -ProfileName 'ProdLow' `
+  -Path '.\scripts\data-load.sql' `
+  -UseTransaction
 ```
 
 ### Export
@@ -114,3 +119,5 @@ It is not intended to emulate SQL*Plus or SQLcl script parsing. In particular, i
 
 - SQL*Plus directives such as `set`, `spool`, `prompt`, `define`, `whenever sqlerror`, or `@child.sql`
 - broader client-side substitution behavior
+
+When testing `-UseTransaction`, prefer DML-only scripts. Oracle can implicitly commit DDL, so `Invoke-OracleSqlFile -UseTransaction` blocks obvious DDL/DCL unless `-AllowDdlInTransaction` is supplied.
