@@ -3,7 +3,8 @@
 Stores an Oracle credential for reuse.
 
 .DESCRIPTION
-Stores a username and encrypted password in the module's credential store.
+Stores a username and password for reuse. By default, the password is encrypted in the module's credential store.
+When -SecretVault or -SecretName is supplied, the password is stored through Microsoft.PowerShell.SecretManagement and the credential store keeps only metadata.
 You can supply a PSCredential directly or prompt interactively by providing -UserName.
 
 .PARAMETER Name
@@ -18,6 +19,12 @@ User name to prompt for when -Credential is not supplied.
 .PARAMETER CredentialStorePath
 Optional custom path to the credential store JSON file.
 
+.PARAMETER SecretVault
+Optional SecretManagement vault name used to store the password.
+
+.PARAMETER SecretName
+Optional SecretManagement secret name. Defaults to an Azure Key Vault compatible name derived from -Name.
+
 .EXAMPLE
 Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER'
 
@@ -27,6 +34,11 @@ Prompts for a password and stores the credential.
 Set-OracleCredential -Name 'ProdLow' -Credential $cred -CredentialStorePath '.\config\oracle-creds.json'
 
 Stores a credential in a custom credential file.
+
+.EXAMPLE
+Set-OracleCredential -Name 'ProdLow' -Credential $cred -SecretVault 'AzKV'
+
+Stores the password in a registered SecretManagement vault and stores only credential metadata in the module credential store.
 #>
 function Set-OracleCredential {
     [CmdletBinding()]
@@ -41,7 +53,13 @@ function Set-OracleCredential {
         [string]$UserName,
 
         [Parameter()]
-        [string]$CredentialStorePath
+        [string]$CredentialStorePath,
+
+        [Parameter()]
+        [string]$SecretVault,
+
+        [Parameter()]
+        [string]$SecretName
     )
 
     if (-not $Credential) {
@@ -61,11 +79,48 @@ function Set-OracleCredential {
 
     $records = @($records | Where-Object { $_.Name -ne $Name })
 
-    $newRecord = [pscustomobject]@{
-        Name              = $Name
-        UserName          = $Credential.UserName
-        EncryptedPassword = Protect-OraclePassword -SecurePassword $Credential.Password
-        UpdatedOn         = Get-Date
+    $useSecretManagement = $PSBoundParameters.ContainsKey('SecretVault') -or $PSBoundParameters.ContainsKey('SecretName')
+
+    if ($useSecretManagement) {
+        $availability = Test-OracleSecretManagementAvailable -RequiredCommand @('Set-Secret')
+        if (-not $availability.Available) {
+            throw ('Microsoft.PowerShell.SecretManagement is required for -SecretVault/-SecretName. Missing command(s): {0}' -f ($availability.MissingCommands -join ', '))
+        }
+
+        if (-not $SecretName) {
+            $SecretName = New-OracleSecretName -Name $Name
+        }
+
+        $setSecretParameters = @{
+            Name               = $SecretName
+            SecureStringSecret = $Credential.Password
+        }
+        if ($SecretVault) {
+            $setSecretParameters.Vault = $SecretVault
+        }
+
+        Set-Secret @setSecretParameters
+
+        $newRecord = [pscustomobject]@{
+            Name              = $Name
+            UserName          = $Credential.UserName
+            CredentialSource  = 'SecretManagement'
+            SecretName        = $SecretName
+            SecretVault       = $SecretVault
+            EncryptedPassword = $null
+            UpdatedOn         = Get-Date
+        }
+    }
+    else {
+        $newRecord = [pscustomobject]@{
+            Name              = $Name
+            UserName          = $Credential.UserName
+            CredentialSource  = 'CredentialStore'
+            SecretName        = $null
+            SecretVault       = $null
+            EncryptedPassword = Protect-OraclePassword -SecurePassword $Credential.Password
+            UpdatedOn         = Get-Date
+        }
     }
 
     $records += $newRecord
@@ -76,9 +131,12 @@ function Set-OracleCredential {
     $records | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
 
     [pscustomobject]@{
-        Name      = $Name
-        UserName  = $Credential.UserName
-        UpdatedOn = $newRecord.UpdatedOn
-        Path      = $path
+        Name             = $Name
+        UserName         = $Credential.UserName
+        CredentialSource = $newRecord.CredentialSource
+        SecretName       = $newRecord.SecretName
+        SecretVault      = $newRecord.SecretVault
+        UpdatedOn        = $newRecord.UpdatedOn
+        Path             = $path
     }
 }

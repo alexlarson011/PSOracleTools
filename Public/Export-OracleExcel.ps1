@@ -7,7 +7,10 @@ Runs a query and writes the resulting rows to a valid `.xlsx` workbook without r
 Supports raw connection strings, PSCredential input, or saved credential names.
 
 .PARAMETER Sql
-SQL query text to export.
+SQL query text to export. Use either -Sql or -SqlPath.
+
+.PARAMETER SqlPath
+Path to a file containing SQL query text to export. Use either -Sql or -SqlPath.
 
 .PARAMETER Path
 Output workbook path.
@@ -35,6 +38,12 @@ Sizes columns based on the exported content. Defaults to $true.
 
 .PARAMETER MaxColumnWidth
 Maximum width used when auto-sizing columns.
+
+.PARAMETER NoClobber
+Prevents overwriting an existing output file.
+
+.PARAMETER Force
+Allows overwriting an existing output file even when -NoClobber is specified.
 
 .PARAMETER Parameters
 Optional bind parameters supplied as a hashtable or OracleParameter objects.
@@ -86,8 +95,11 @@ function Export-OracleExcel {
         [Parameter(Mandatory, ParameterSetName = 'ByProfileName')]
         [string]$ProfileName,
 
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Sql,
+
+        [Parameter()]
+        [string]$SqlPath,
 
         [Parameter(Mandatory)]
         [string]$Path,
@@ -116,6 +128,12 @@ function Export-OracleExcel {
         [Parameter()]
         [ValidateRange(1, 255)]
         [int]$MaxColumnWidth = 60,
+
+        [Parameter()]
+        [switch]$NoClobber,
+
+        [Parameter()]
+        [switch]$Force,
 
         [Parameter()]
         $Parameters,
@@ -149,8 +167,32 @@ function Export-OracleExcel {
     $targetDataSource = $null
     $resolvedProfile = $null
     $result = $null
+    $fileSizeBytes = 0
 
     try {
+        if ($PSBoundParameters.ContainsKey('Sql') -eq $PSBoundParameters.ContainsKey('SqlPath')) {
+            throw 'Provide either -Sql or -SqlPath, but not both.'
+        }
+
+        if ($PSBoundParameters.ContainsKey('SqlPath')) {
+            if (-not (Test-Path -LiteralPath $SqlPath -PathType Leaf)) {
+                throw "SQL file not found: $SqlPath"
+            }
+            $Sql = Get-Content -LiteralPath $SqlPath -Raw
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Sql)) {
+            throw 'SQL query text cannot be empty.'
+        }
+
+        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $NoClobber -and -not $Force) {
+            throw "Output file already exists: $Path"
+        }
+
+        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $Force) {
+            (Get-Item -LiteralPath $Path).IsReadOnly = $false
+        }
+
         switch ($PSCmdlet.ParameterSetName) {
             'ByConnectionString' {
                 $cs = $ConnectionString
@@ -218,6 +260,7 @@ function Export-OracleExcel {
         $result = Write-ExcelWorkbookFromDataReader -Reader $reader -Path $Path -WorksheetName $WorksheetName -IncludeHeader $IncludeHeader -BoldHeader $BoldHeader -NullValue $NullValue -AutoFilter $AutoFilter -FreezeHeaderRow $FreezeHeaderRow -AutoSizeColumns $AutoSizeColumns -MaxColumnWidth $MaxColumnWidth
 
         $sw.Stop()
+        $fileSizeBytes = (Get-Item -LiteralPath $Path).Length
 
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $result.RowCount, $sw.ElapsedMilliseconds)
@@ -229,6 +272,7 @@ function Export-OracleExcel {
             WorksheetName = $result.WorksheetName
             RowCount      = $result.RowCount
             ColumnCount   = $result.ColumnCount
+            FileSizeBytes = $fileSizeBytes
             ElapsedMs     = $sw.ElapsedMilliseconds
         }
     }

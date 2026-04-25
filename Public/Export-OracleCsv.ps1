@@ -8,7 +8,10 @@ This is a convenience wrapper around Export-OracleDelimitedFile with CSV-friendl
 comma delimiter, header row included, and all fields quoted.
 
 .PARAMETER Sql
-SQL query text to export.
+SQL query text to export. Use either -Sql or -SqlPath.
+
+.PARAMETER SqlPath
+Path to a file containing SQL query text to export. Use either -Sql or -SqlPath.
 
 .PARAMETER Path
 Output CSV file path.
@@ -16,8 +19,23 @@ Output CSV file path.
 .PARAMETER NullValue
 Replacement text for null values.
 
+.PARAMETER DateFormat
+Optional .NET date format string for date-only values in CSV output.
+
+.PARAMETER DateTimeFormat
+Optional .NET date/time format string for date/time values in CSV output.
+
+.PARAMETER Culture
+Culture name used for CSV number and date formatting.
+
 .PARAMETER Parameters
 Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER NoClobber
+Prevents overwriting an existing output file.
+
+.PARAMETER Force
+Allows overwriting an existing output file even when -NoClobber is specified.
 
 .PARAMETER CommandTimeout
 Command timeout in seconds.
@@ -66,8 +84,11 @@ function Export-OracleCsv {
         [Parameter(Mandatory, ParameterSetName = 'ByProfileName')]
         [string]$ProfileName,
 
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Sql,
+
+        [Parameter()]
+        [string]$SqlPath,
 
         [Parameter(Mandatory)]
         [string]$Path,
@@ -76,7 +97,22 @@ function Export-OracleCsv {
         [string]$NullValue = '',
 
         [Parameter()]
+        [string]$DateFormat,
+
+        [Parameter()]
+        [string]$DateTimeFormat,
+
+        [Parameter()]
+        [string]$Culture,
+
+        [Parameter()]
         $Parameters,
+
+        [Parameter()]
+        [switch]$NoClobber,
+
+        [Parameter()]
+        [switch]$Force,
 
         [Parameter()]
         [int]$CommandTimeout = 300,
@@ -101,7 +137,6 @@ function Export-OracleCsv {
     )
 
     $invokeParams = @{
-        Sql            = $Sql
         Path           = $Path
         Delimiter      = ','
         IncludeHeader  = $true
@@ -110,8 +145,29 @@ function Export-OracleCsv {
         CommandTimeout = $CommandTimeout
     }
 
+    if ($PSBoundParameters.ContainsKey('Sql')) {
+        $invokeParams.Sql = $Sql
+    }
+    if ($PSBoundParameters.ContainsKey('SqlPath')) {
+        $invokeParams.SqlPath = $SqlPath
+    }
+    if ($PSBoundParameters.ContainsKey('DateFormat')) {
+        $invokeParams.DateFormat = $DateFormat
+    }
+    if ($PSBoundParameters.ContainsKey('DateTimeFormat')) {
+        $invokeParams.DateTimeFormat = $DateTimeFormat
+    }
+    if ($PSBoundParameters.ContainsKey('Culture')) {
+        $invokeParams.Culture = $Culture
+    }
     if ($PSBoundParameters.ContainsKey('Parameters')) {
         $invokeParams.Parameters = $Parameters
+    }
+    if ($PSBoundParameters.ContainsKey('NoClobber')) {
+        $invokeParams.NoClobber = $NoClobber
+    }
+    if ($PSBoundParameters.ContainsKey('Force')) {
+        $invokeParams.Force = $Force
     }
     if ($PSBoundParameters.ContainsKey('CredentialStorePath')) {
         $invokeParams.CredentialStorePath = $CredentialStorePath

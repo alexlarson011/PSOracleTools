@@ -108,6 +108,52 @@ Set-OracleModuleConfiguration -CredentialStorePath '.\config\oracle-creds.json'
 Set-OracleModuleConfiguration -ResetToDefault
 ```
 
+### SecretManagement-backed credentials
+
+You can optionally store the password in a registered `Microsoft.PowerShell.SecretManagement` vault.
+In that mode, `PSOracleTools` stores only metadata such as the user name, secret name, and vault name in its credential store.
+
+```powershell
+Set-OracleCredential `
+  -Name 'ProdLow' `
+  -Credential $cred `
+  -SecretVault 'LocalStore'
+```
+
+If `-SecretName` is omitted, the module creates an Azure Key Vault compatible secret name such as `PSOracleTools-ProdLow-1a2b3c4d`.
+
+Azure Key Vault works through the `Az.KeyVault` SecretManagement extension once the vault is registered:
+
+```powershell
+Install-Module Microsoft.PowerShell.SecretManagement -Scope CurrentUser
+Install-Module Az.KeyVault -Scope CurrentUser
+
+Register-SecretVault `
+  -Name 'AzKV' `
+  -ModuleName Az.KeyVault `
+  -VaultParameters @{
+      AZKVaultName  = 'my-key-vault'
+      SubscriptionId = '00000000-0000-0000-0000-000000000000'
+  }
+
+Set-OracleCredential `
+  -Name 'ProdLow' `
+  -Credential $cred `
+  -SecretVault 'AzKV'
+```
+
+Remove the metadata only:
+
+```powershell
+Remove-OracleCredential -Name 'ProdLow'
+```
+
+Remove both the metadata and the backing secret:
+
+```powershell
+Remove-OracleCredential -Name 'ProdLow' -RemoveSecret -Confirm:$false
+```
+
 ## Connection Profiles
 
 Connection profiles store non-secret defaults such as:
@@ -276,6 +322,17 @@ order by movie_id
   -TrailingDelimiter
 ```
 
+You can also load query text from a file with `-SqlPath`, protect existing files with `-NoClobber`, and use `-Force` when you intentionally want to overwrite:
+
+```powershell
+Export-OracleDelimitedFile `
+  -ProfileName 'ProdLow' `
+  -SqlPath '.\queries\movies.sql' `
+  -Path '.\output\movies.txt' `
+  -IncludeHeader `
+  -NoClobber
+```
+
 ### CSV export
 
 ```powershell
@@ -286,7 +343,9 @@ select movie_id, movie_nm
 from ps_tools.movies
 order by movie_id
 "@ `
-  -Path '.\output\movies.csv'
+  -Path '.\output\movies.csv' `
+  -DateTimeFormat 'yyyy-MM-dd HH:mm:ss' `
+  -Culture 'en-US'
 ```
 
 ### Excel export
@@ -306,9 +365,13 @@ order by movie_id
 `Export-OracleExcel` creates a valid `.xlsx` workbook without requiring Microsoft Excel.
 By default it includes a plain header row and sizes columns to fit the exported content.
 Auto-filtering, frozen panes, and bold headers are available as opt-in options.
+The export result includes row count, column count, file size, and elapsed time.
 
 Useful options include:
 
+- `-SqlPath '.\queries\report.sql'`
+- `-NoClobber`
+- `-Force`
 - `-IncludeHeader:$false`
 - `-BoldHeader`
 - `-WorksheetName 'MySheet'`
@@ -316,6 +379,12 @@ Useful options include:
 - `-FreezeHeaderRow`
 - `-AutoSizeColumns:$false`
 - `-MaxColumnWidth 40`
+
+Delimited and CSV exports also support:
+
+- `-DateFormat 'yyyy-MM-dd'`
+- `-DateTimeFormat 'yyyy-MM-dd HH:mm:ss'`
+- `-Culture 'en-US'`
 
 ## Logging
 

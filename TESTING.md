@@ -33,12 +33,25 @@ Use a known-good Oracle data source and credential.
 ```powershell
 Import-Module .\PSOracleTools.psd1 -Force
 Initialize-OracleClient | Format-List *
+Get-OracleModuleConfiguration | Format-List *
 ```
 
 ### Connection
 
 ```powershell
 Test-OracleConnection -ProfileName 'ProdLow' | Format-List *
+```
+
+### Optional SecretManagement
+
+If `Microsoft.PowerShell.SecretManagement` and a vault extension are configured:
+
+```powershell
+$cred = Get-Credential
+Set-OracleCredential -Name 'ProdSecret' -Credential $cred -SecretVault 'LocalStore'
+Set-OracleConnectionProfile -Name 'ProdSecret' -DataSource 'mydb_low' -CredentialName 'ProdSecret'
+Test-OracleConnection -ProfileName 'ProdSecret'
+Remove-OracleCredential -Name 'ProdSecret' -RemoveSecret -Confirm:$false
 ```
 
 ### Query
@@ -72,13 +85,19 @@ Invoke-OracleSqlFile `
 Export-OracleCsv `
   -ProfileName 'ProdLow' `
   -Sql 'select movie_id, movie_nm from ps_tools.movies' `
-  -Path '.\output\movies.csv'
+  -Path '.\output\movies.csv' `
+  -DateTimeFormat 'yyyy-MM-dd HH:mm:ss' `
+  -Culture 'en-US'
+
+New-Item -Path '.\output' -ItemType Directory -Force | Out-Null
+'select movie_id, movie_nm, release_dt from ps_tools.movies' | Set-Content -Path '.\output\movies-query.sql'
 
 Export-OracleExcel `
   -ProfileName 'ProdLow' `
-  -Sql 'select movie_id, movie_nm, release_dt from ps_tools.movies' `
+  -SqlPath '.\output\movies-query.sql' `
   -Path '.\output\movies.xlsx' `
-  -WorksheetName 'Movies'
+  -WorksheetName 'Movies' `
+  -NoClobber
 ```
 
 ## SQL File Note

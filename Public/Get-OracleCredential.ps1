@@ -4,7 +4,7 @@ Reads saved Oracle credential metadata from the credential store.
 
 .DESCRIPTION
 Returns one saved credential record or all saved credential records from the configured credential store.
-The returned object includes the stored user name and encrypted password metadata.
+The returned object includes stored credential metadata. For SecretManagement-backed records, this includes the secret name and vault, not the secret value.
 
 .PARAMETER Name
 Optional credential name to retrieve.

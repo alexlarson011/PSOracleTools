@@ -7,7 +7,10 @@ Runs a query and writes the resulting rows to a delimited UTF-8 file.
 Supports raw connection strings, PSCredential input, or saved credential names.
 
 .PARAMETER Sql
-SQL query text to export.
+SQL query text to export. Use either -Sql or -SqlPath.
+
+.PARAMETER SqlPath
+Path to a file containing SQL query text to export. Use either -Sql or -SqlPath.
 
 .PARAMETER Path
 Output file path.
@@ -21,11 +24,26 @@ Includes a header row with column names.
 .PARAMETER NullValue
 Replacement text for null values.
 
+.PARAMETER DateFormat
+Optional .NET date format string for date-only values in delimited output.
+
+.PARAMETER DateTimeFormat
+Optional .NET date/time format string for date/time values in delimited output.
+
+.PARAMETER Culture
+Culture name used for delimited number and date formatting.
+
 .PARAMETER QuoteAll
 Quotes every field in the output.
 
 .PARAMETER TrailingDelimiter
 Appends the delimiter character to the end of each written row.
+
+.PARAMETER NoClobber
+Prevents overwriting an existing output file.
+
+.PARAMETER Force
+Allows overwriting an existing output file even when -NoClobber is specified.
 
 .PARAMETER Parameters
 Optional bind parameters supplied as a hashtable or OracleParameter objects.
@@ -77,8 +95,11 @@ function Export-OracleDelimitedFile {
         [Parameter(Mandatory, ParameterSetName = 'ByProfileName')]
         [string]$ProfileName,
 
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Sql,
+
+        [Parameter()]
+        [string]$SqlPath,
 
         [Parameter(Mandatory)]
         [string]$Path,
@@ -93,10 +114,25 @@ function Export-OracleDelimitedFile {
         [string]$NullValue = '',
 
         [Parameter()]
+        [string]$DateFormat,
+
+        [Parameter()]
+        [string]$DateTimeFormat,
+
+        [Parameter()]
+        [string]$Culture,
+
+        [Parameter()]
         [switch]$QuoteAll,
 
         [Parameter()]
         [switch]$TrailingDelimiter,
+
+        [Parameter()]
+        [switch]$NoClobber,
+
+        [Parameter()]
+        [switch]$Force,
 
         [Parameter()]
         $Parameters,
@@ -129,10 +165,42 @@ function Export-OracleDelimitedFile {
     $reader = $null
     $writer = $null
     $rowCount = 0
+    $columnCount = 0
+    $fileSizeBytes = 0
     $targetDataSource = $null
     $resolvedProfile = $null
 
     try {
+        if ($PSBoundParameters.ContainsKey('Sql') -eq $PSBoundParameters.ContainsKey('SqlPath')) {
+            throw 'Provide either -Sql or -SqlPath, but not both.'
+        }
+
+        if ($PSBoundParameters.ContainsKey('SqlPath')) {
+            if (-not (Test-Path -LiteralPath $SqlPath -PathType Leaf)) {
+                throw "SQL file not found: $SqlPath"
+            }
+            $Sql = Get-Content -LiteralPath $SqlPath -Raw
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Sql)) {
+            throw 'SQL query text cannot be empty.'
+        }
+
+        $formatCulture = if ($Culture) {
+            [System.Globalization.CultureInfo]::GetCultureInfo($Culture)
+        }
+        else {
+            [System.Globalization.CultureInfo]::CurrentCulture
+        }
+
+        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $NoClobber -and -not $Force) {
+            throw "Output file already exists: $Path"
+        }
+
+        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $Force) {
+            (Get-Item -LiteralPath $Path).IsReadOnly = $false
+        }
+
         switch ($PSCmdlet.ParameterSetName) {
             'ByConnectionString' {
                 $cs = $ConnectionString
@@ -202,19 +270,20 @@ function Export-OracleDelimitedFile {
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         $reader = $command.ExecuteReader()
+        $columnCount = [int]$reader.FieldCount
         $writer = New-Object System.IO.StreamWriter($Path, $false, [System.Text.Encoding]::UTF8)
 
         if ($IncludeHeader) {
-            $header = for ($i = 0; $i -lt $reader.FieldCount; $i++) {
-                ConvertTo-DelimitedValue -Value $reader.GetName($i) -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll
+            $header = for ($i = 0; $i -lt $columnCount; $i++) {
+                ConvertTo-DelimitedValue -Value $reader.GetName($i) -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll -Culture $formatCulture
             }
             $writer.WriteLine(($header -join $Delimiter))
         }
 
         while ($reader.Read()) {
-            $line = for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+            $line = for ($i = 0; $i -lt $columnCount; $i++) {
                 $value = if ($reader.IsDBNull($i)) { $null } else { $reader.GetValue($i) }
-                ConvertTo-DelimitedValue -Value $value -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll
+                ConvertTo-DelimitedValue -Value $value -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll -DateFormat $DateFormat -DateTimeFormat $DateTimeFormat -Culture $formatCulture
             }
 
             $outputLine = ($line -join $Delimiter)
@@ -227,16 +296,22 @@ function Export-OracleDelimitedFile {
         }
 
         $sw.Stop()
+        $writer.Flush()
+        Close-OracleResource -Object $writer
+        $writer = $null
+        $fileSizeBytes = (Get-Item -LiteralPath $Path).Length
 
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $rowCount, $sw.ElapsedMilliseconds)
         }
 
         [pscustomobject]@{
-            Success   = $true
-            Path      = $Path
-            RowCount  = $rowCount
-            ElapsedMs = $sw.ElapsedMilliseconds
+            Success       = $true
+            Path          = $Path
+            RowCount      = $rowCount
+            ColumnCount   = $columnCount
+            FileSizeBytes = $fileSizeBytes
+            ElapsedMs     = $sw.ElapsedMilliseconds
         }
     }
     catch {
