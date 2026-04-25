@@ -87,6 +87,7 @@ function Invoke-OracleNonQuery {
         [switch]$LogParameters
     )
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -164,11 +165,16 @@ function Invoke-OracleNonQuery {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OracleNonQuery succeeded; DataSource={0}; RowsAffected={1}; ElapsedMs={2}" -f $connection.DataSource, $rowsAffected, $sw.ElapsedMilliseconds)
         }
 
-        [pscustomobject]@{
-            Success      = $true
-            RowsAffected = $rowsAffected
-            ElapsedMs    = $sw.ElapsedMilliseconds
-        }
+        New-OracleResult -TypeName 'PSOracleTools.NonQueryResult' -Property ([ordered]@{
+                Success      = $true
+                Operation    = 'Invoke-OracleNonQuery'
+                DataSource   = $connection.DataSource
+                ProfileName  = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                StartedOn    = $startedOn
+                CompletedOn  = Get-Date
+                ElapsedMs    = $sw.ElapsedMilliseconds
+                RowsAffected = $rowsAffected
+            })
     }
     catch {
         $sw.Stop()

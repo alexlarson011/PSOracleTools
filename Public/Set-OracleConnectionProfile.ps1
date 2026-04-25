@@ -40,17 +40,22 @@ Optional custom path to the profile store JSON file.
 Set-OracleConnectionProfile -Name 'ProdLow' -DataSource 'mydb_low' -CredentialName 'ProdCred'
 
 Creates a simple reusable connection profile.
+
+.EXAMPLE
+Set-OracleConnectionProfile ProdLow mydb_low ProdCred
+
+Creates a simple reusable connection profile using positional arguments.
 #>
 function Set-OracleConnectionProfile {
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0)]
         [string]$Name,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 1)]
         [string]$DataSource,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 2)]
         [ValidateNotNullOrEmpty()]
         [string]$CredentialName,
 
@@ -107,10 +112,12 @@ function Set-OracleConnectionProfile {
 
     $profiles | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.ConnectionProfileSetResult' -Property ([ordered]@{
+        Success   = $true
+        Operation = 'Set-OracleConnectionProfile'
         Name      = $Name
         DataSource = $DataSource
         UpdatedOn = $profile.UpdatedOn
         Path      = $path
-    }
+    })
 }

@@ -160,6 +160,7 @@ function Export-OracleExcel {
         [switch]$LogParameters
     )
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -266,15 +267,20 @@ function Export-OracleExcel {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleExcel succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $result.RowCount, $sw.ElapsedMilliseconds)
         }
 
-        [pscustomobject]@{
-            Success       = $true
-            Path          = $Path
-            WorksheetName = $result.WorksheetName
-            RowCount      = $result.RowCount
-            ColumnCount   = $result.ColumnCount
-            FileSizeBytes = $fileSizeBytes
-            ElapsedMs     = $sw.ElapsedMilliseconds
-        }
+        New-OracleResult -TypeName 'PSOracleTools.ExcelExportResult' -Property ([ordered]@{
+                Success       = $true
+                Operation     = 'Export-OracleExcel'
+                DataSource    = $connection.DataSource
+                ProfileName   = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                Path          = $Path
+                WorksheetName = $result.WorksheetName
+                StartedOn     = $startedOn
+                CompletedOn   = Get-Date
+                ElapsedMs     = $sw.ElapsedMilliseconds
+                RowCount      = $result.RowCount
+                ColumnCount   = $result.ColumnCount
+                FileSizeBytes = $fileSizeBytes
+            })
     }
     catch {
         $sw.Stop()

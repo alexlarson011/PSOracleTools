@@ -15,11 +15,16 @@ Optional custom path to the profile store JSON file.
 Get-OracleConnectionProfile
 
 Lists all stored connection profiles.
+
+.EXAMPLE
+Get-OracleConnectionProfile ProdLow
+
+Returns one stored connection profile using a positional name.
 #>
 function Get-OracleConnectionProfile {
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     param(
-        [Parameter()]
+        [Parameter(Position = 0)]
         [string]$Name,
 
         [Parameter()]

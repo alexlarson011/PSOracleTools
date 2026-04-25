@@ -19,11 +19,16 @@ Also removes the backing SecretManagement secret when the credential record uses
 Remove-OracleCredential -Name 'ProdLow' -Confirm:$false
 
 Removes a saved credential without prompting.
+
+.EXAMPLE
+Remove-OracleCredential ProdLow -Confirm:$false
+
+Removes a saved credential using a positional name.
 #>
 function Remove-OracleCredential {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0)]
         [string]$Name,
 
         [Parameter()]
@@ -62,9 +67,11 @@ function Remove-OracleCredential {
         $newRecords | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
     }
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.CredentialRemoveResult' -Property ([ordered]@{
+        Success       = $true
+        Operation     = 'Remove-OracleCredential'
         Name          = $Name
         Removed       = ($records.Count -ne $newRecords.Count)
         SecretRemoved = [bool]($RemoveSecret -and $record -and $record.PSObject.Properties['SecretName'] -and $record.SecretName)
-    }
+    })
 }

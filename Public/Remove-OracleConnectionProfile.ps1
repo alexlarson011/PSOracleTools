@@ -15,11 +15,16 @@ Optional custom path to the profile store JSON file.
 Remove-OracleConnectionProfile -Name 'ProdLow' -Confirm:$false
 
 Removes a stored connection profile without prompting.
+
+.EXAMPLE
+Remove-OracleConnectionProfile ProdLow -Confirm:$false
+
+Removes a stored connection profile using a positional name.
 #>
 function Remove-OracleConnectionProfile {
-    [CmdletBinding(SupportsShouldProcess)]
+    [CmdletBinding(SupportsShouldProcess, PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0)]
         [string]$Name,
 
         [Parameter()]
@@ -39,8 +44,10 @@ function Remove-OracleConnectionProfile {
         $newProfiles | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
     }
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.ConnectionProfileRemoveResult' -Property ([ordered]@{
+        Success = $true
+        Operation = 'Remove-OracleConnectionProfile'
         Name    = $Name
         Removed = ($profiles.Count -ne $newProfiles.Count)
-    }
+    })
 }

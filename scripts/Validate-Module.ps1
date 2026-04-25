@@ -70,6 +70,22 @@ if ($connectionStringBuilder['Data Source'] -ne 'db;one' -or
     throw 'Connection string escaping validation failed.'
 }
 
+Write-Host 'Checking positional helper commands...'
+$positionalConnectionString = New-OracleConnectionString 'db;two' 'user=two' 'pw;two'
+$positionalConnectionStringBuilder = New-Object Oracle.ManagedDataAccess.Client.OracleConnectionStringBuilder($positionalConnectionString)
+if ($positionalConnectionStringBuilder['Data Source'] -ne 'db;two' -or
+    $positionalConnectionStringBuilder['User Id'] -ne 'user=two' -or
+    $positionalConnectionStringBuilder['Password'] -ne 'pw;two') {
+    throw 'Positional connection string validation failed.'
+}
+
+$positionalParameter = New-OracleParameter movie_id 1 Int32
+if ($positionalParameter.ParameterName -ne 'movie_id' -or
+    $positionalParameter.Value -ne 1 -or
+    $positionalParameter.OracleDbType -ne [Oracle.ManagedDataAccess.Client.OracleDbType]::Int32) {
+    throw 'Positional parameter validation failed.'
+}
+
 Write-Host 'Checking SQL script parser directives...'
 $parsedStatements = @(& $module {
         param([string]$SqlText)

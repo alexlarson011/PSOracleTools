@@ -205,5 +205,8 @@ function Export-OracleCsv {
         }
     }
 
-    return Export-OracleDelimitedFile @invokeParams
+    $result = Export-OracleDelimitedFile @invokeParams
+    $result.PSObject.TypeNames.Insert(0, 'PSOracleTools.CsvExportResult')
+    $result.Operation = 'Export-OracleCsv'
+    return $result
 }

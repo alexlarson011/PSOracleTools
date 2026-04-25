@@ -25,23 +25,28 @@ Optional parameter size.
 New-OracleParameter -Name 'movie_id' -Value 1 -OracleDbType Int32
 
 Creates an input parameter for a numeric movie id.
+
+.EXAMPLE
+New-OracleParameter movie_id 1 Int32
+
+Creates an input parameter using positional arguments.
 #>
 function New-OracleParameter {
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0)]
         [string]$Name,
 
-        [Parameter()]
+        [Parameter(Position = 1)]
         $Value,
 
-        [Parameter()]
+        [Parameter(Position = 2)]
         [Oracle.ManagedDataAccess.Client.OracleDbType]$OracleDbType,
 
-        [Parameter()]
+        [Parameter(Position = 3)]
         [System.Data.ParameterDirection]$Direction = [System.Data.ParameterDirection]::Input,
 
-        [Parameter()]
+        [Parameter(Position = 4)]
         [int]$Size
     )
 

@@ -33,11 +33,19 @@ Includes PL/SQL text in log entries.
 .PARAMETER LogParameters
 Includes parameter names and types in log entries.
 
+.PARAMETER OutputAsProperties
+Adds non-input output parameters as top-level properties on the returned object.
+
 .EXAMPLE
 $outCount = New-OracleParameter -Name 'movie_count' -OracleDbType Int32 -Direction Output
 Invoke-OraclePlSql -ProfileName 'ProdLow' -PlSql 'begin select count(*) into :movie_count from ps_tools.movies; end;' -Parameters @($outCount)
 
 Executes a PL/SQL block with a saved connection profile and returns output parameters.
+
+.EXAMPLE
+Invoke-OraclePlSql -ProfileName 'ProdLow' -PlSql 'begin select count(*) into :movie_count from ps_tools.movies; end;' -Parameters @($outCount) -OutputAsProperties
+
+Returns output parameters as top-level properties in addition to the stable OutputParameters hashtable.
 #>
 function Invoke-OraclePlSql {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
@@ -85,9 +93,13 @@ function Invoke-OraclePlSql {
         [switch]$LogSql,
 
         [Parameter()]
-        [switch]$LogParameters
+        [switch]$LogParameters,
+
+        [Parameter()]
+        [switch]$OutputAsProperties
     )
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -164,7 +176,7 @@ function Invoke-OraclePlSql {
         $outputParameters = @{}
         foreach ($param in $command.Parameters) {
             if ($param.Direction -ne [System.Data.ParameterDirection]::Input) {
-                $outputParameters[$param.ParameterName] = if ($param.Value -eq [DBNull]::Value) { $null } else { $param.Value }
+                $outputParameters[$param.ParameterName] = ConvertFrom-OracleProviderValue -Value $param.Value
             }
         }
 
@@ -172,11 +184,30 @@ function Invoke-OraclePlSql {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OraclePlSql succeeded; DataSource={0}; OutputParameterCount={1}; ElapsedMs={2}" -f $connection.DataSource, $outputParameters.Count, $sw.ElapsedMilliseconds)
         }
 
-        [pscustomobject]@{
-            Success          = $true
-            ElapsedMs        = $sw.ElapsedMilliseconds
-            OutputParameters = $outputParameters
+        $completedOn = Get-Date
+        $properties = [ordered]@{
+            Success              = $true
+            Operation            = 'Invoke-OraclePlSql'
+            DataSource           = $connection.DataSource
+            ProfileName          = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+            StartedOn            = $startedOn
+            CompletedOn          = $completedOn
+            ElapsedMs            = $sw.ElapsedMilliseconds
+            OutputParameterCount = $outputParameters.Count
+            OutputParameters     = $outputParameters
         }
+
+        if ($OutputAsProperties) {
+            foreach ($key in ($outputParameters.Keys | Sort-Object)) {
+                $propertyName = [string]$key
+                if ($properties.Contains($propertyName)) {
+                    $propertyName = 'Output_{0}' -f $propertyName
+                }
+                $properties[$propertyName] = $outputParameters[$key]
+            }
+        }
+
+        New-OracleResult -TypeName 'PSOracleTools.PlSqlResult' -Property $properties
     }
     catch {
         $sw.Stop()

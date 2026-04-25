@@ -21,17 +21,20 @@ function Initialize-OracleClient {
         [string]$DllPath = (Get-OracleBundledDllPath -ModuleRoot $PSScriptRoot.Replace('\Public', ''))
     )
 
+    $startedOn = Get-Date
     Import-OracleAssembly -DllPath $DllPath
     $configuration = Set-OracleClientConfiguration
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.ClientInitializationResult' -Property ([ordered]@{
         Success                     = $true
+        Operation                   = 'Initialize-OracleClient'
         DllPath                     = $DllPath
         Loaded                      = (Test-OracleAssemblyLoaded)
         TnsAdmin                    = $configuration.TnsAdmin
         WalletLocation              = $configuration.WalletLocation
         OpenTelemetryTracing        = $configuration.OpenTelemetryTracing
         DatabaseOpenTelemetryTracing = $configuration.DatabaseOpenTelemetryTracing
-        Timestamp                   = Get-Date
-    }
+        StartedOn                   = $startedOn
+        CompletedOn                 = Get-Date
+    })
 }

@@ -84,6 +84,7 @@ function Test-OracleConnection {
         [string]$LogPath
     )
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -139,14 +140,18 @@ function Test-OracleConnection {
         $sw.Stop()
         $operationSucceeded = $true
 
-        [pscustomobject]@{
-            Success       = $true
-            UserName      = $userName
-            DataSource    = $connection.DataSource
-            ServerVersion = $connection.ServerVersion
-            DatabaseTime  = $result
-            ElapsedMs     = $sw.ElapsedMilliseconds
-        }
+        New-OracleResult -TypeName 'PSOracleTools.ConnectionTestResult' -Property ([ordered]@{
+                Success       = $true
+                Operation     = 'Test-OracleConnection'
+                ProfileName   = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                UserName      = $userName
+                DataSource    = $connection.DataSource
+                ServerVersion = $connection.ServerVersion
+                DatabaseTime  = $result
+                StartedOn     = $startedOn
+                CompletedOn   = Get-Date
+                ElapsedMs     = $sw.ElapsedMilliseconds
+            })
     }
     catch {
         $sw.Stop()
@@ -154,13 +159,17 @@ function Test-OracleConnection {
             Write-OracleLog -Path $LogPath -Level ERROR -Message ("Test-OracleConnection failed; DataSource={0}; UserName={1}; ElapsedMs={2}; Error={3}" -f $targetDataSource, $userName, $sw.ElapsedMilliseconds, (Get-OracleExceptionMessage -Exception $_.Exception))
         }
 
-        [pscustomobject]@{
-            Success      = $false
-            UserName     = $userName
-            DataSource   = $targetDataSource
-            ErrorMessage = Get-OracleExceptionMessage -Exception $_.Exception
-            ElapsedMs    = $sw.ElapsedMilliseconds
-        }
+        New-OracleResult -TypeName 'PSOracleTools.ConnectionTestResult' -Property ([ordered]@{
+                Success      = $false
+                Operation    = 'Test-OracleConnection'
+                ProfileName  = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                UserName     = $userName
+                DataSource   = $targetDataSource
+                StartedOn    = $startedOn
+                CompletedOn  = Get-Date
+                ElapsedMs    = $sw.ElapsedMilliseconds
+                ErrorMessage = Get-OracleExceptionMessage -Exception $_.Exception
+            })
     }
     finally {
         if (($Log -or $LogPath) -and $operationSucceeded) {

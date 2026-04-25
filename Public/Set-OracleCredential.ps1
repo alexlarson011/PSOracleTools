@@ -31,6 +31,11 @@ Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER'
 Prompts for a password and stores the credential.
 
 .EXAMPLE
+Set-OracleCredential ProdLow APP_USER
+
+Prompts for a password and stores the credential using positional arguments.
+
+.EXAMPLE
 Set-OracleCredential -Name 'ProdLow' -Credential $cred -CredentialStorePath '.\config\oracle-creds.json'
 
 Stores a credential in a custom credential file.
@@ -41,24 +46,28 @@ Set-OracleCredential -Name 'ProdLow' -Credential $cred -SecretVault 'AzKV'
 Stores the password in a registered SecretManagement vault and stores only credential metadata in the module credential store.
 #>
 function Set-OracleCredential {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'ByUserName', PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByUserName')]
+        [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByCredential')]
         [string]$Name,
 
-        [Parameter()]
+        [Parameter(Mandatory, Position = 1, ParameterSetName = 'ByCredential')]
         [PSCredential]$Credential,
 
-        [Parameter()]
+        [Parameter(Mandatory, Position = 1, ParameterSetName = 'ByUserName')]
         [string]$UserName,
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'ByUserName')]
+        [Parameter(ParameterSetName = 'ByCredential')]
         [string]$CredentialStorePath,
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'ByUserName')]
+        [Parameter(ParameterSetName = 'ByCredential')]
         [string]$SecretVault,
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'ByUserName')]
+        [Parameter(ParameterSetName = 'ByCredential')]
         [string]$SecretName
     )
 
@@ -130,7 +139,9 @@ function Set-OracleCredential {
     }
     $records | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.CredentialSetResult' -Property ([ordered]@{
+        Success          = $true
+        Operation        = 'Set-OracleCredential'
         Name             = $Name
         UserName         = $Credential.UserName
         CredentialSource = $newRecord.CredentialSource
@@ -138,5 +149,5 @@ function Set-OracleCredential {
         SecretVault      = $newRecord.SecretVault
         UpdatedOn        = $newRecord.UpdatedOn
         Path             = $path
-    }
+    })
 }

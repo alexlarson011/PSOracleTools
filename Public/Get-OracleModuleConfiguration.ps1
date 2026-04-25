@@ -18,12 +18,12 @@ function Get-OracleModuleConfiguration {
 
     $secretManagement = Test-OracleSecretManagementAvailable
 
-    [pscustomobject]@{
+    New-OracleResult -TypeName 'PSOracleTools.ModuleConfiguration' -Property ([ordered]@{
         CredentialStorePath        = Get-OracleCredentialStorePath
         ProfileStorePath           = Get-OracleProfileStorePath
         EnvironmentCredentialStore = $env:PSORACLETOOLS_CREDENTIAL_STORE
         EnvironmentProfileStore    = $env:PSORACLETOOLS_PROFILE_STORE
         SecretManagementAvailable  = $secretManagement.Available
         SecretManagementMissing    = $secretManagement.MissingCommands
-    }
+    })
 }

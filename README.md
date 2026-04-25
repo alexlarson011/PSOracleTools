@@ -5,11 +5,13 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 
 - initialize the managed Oracle client automatically on import
 - connect with a raw connection string, `PSCredential`, or a saved credential name
+- store reusable connection profiles with credential, timeout, and logging defaults
 - run queries, scalar statements, non-query SQL, and PL/SQL blocks
-- execute SQL files
+- execute SQL files, with optional transaction handling for DML scripts
 - export result sets to delimited text files
 - export result sets to CSV files
 - export result sets to native Excel workbooks (`.xlsx`)
+- optionally store passwords in a `Microsoft.PowerShell.SecretManagement` vault
 - use wallet and `tnsnames.ora` based connections through `TNS_ADMIN`
 - optionally log execution details for automation and troubleshooting
 
@@ -22,6 +24,11 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 
 The module ships with `Oracle.ManagedDataAccess.dll` and the managed dependencies it needs in the local `lib` folder.
 
+Optional features have their own requirements:
+
+- Secret-backed credentials require `Microsoft.PowerShell.SecretManagement` and a registered vault extension, such as `Microsoft.PowerShell.SecretStore` or `Az.KeyVault`.
+- Optional Excel template automation under `.\Optional\ExcelAutomation` requires Microsoft Excel installed on Windows.
+
 ## Validation
 
 You can run a lightweight repo-local validation pass with:
@@ -29,6 +36,31 @@ You can run a lightweight repo-local validation pass with:
 ```powershell
 .\scripts\Validate-Module.ps1
 ```
+
+## Command Overview
+
+The module exports these public commands:
+
+- `Initialize-OracleClient`: load the bundled Oracle managed client and report client paths.
+- `New-OracleConnectionString`: safely build an Oracle connection string.
+- `Test-OracleConnection`: test a raw, credential-based, or profile-based connection.
+- `Set-OracleCredential`, `Get-OracleCredential`, `Remove-OracleCredential`: manage saved Oracle credentials.
+- `Set-OracleConnectionProfile`, `Get-OracleConnectionProfile`, `Remove-OracleConnectionProfile`: manage reusable connection profiles.
+- `Get-OracleModuleConfiguration`, `Set-OracleModuleConfiguration`: inspect or change session-level store paths.
+- `Invoke-OracleQuery`: return dynamic row objects for a SQL query.
+- `Invoke-OracleScalar`: return a single scalar value.
+- `Invoke-OracleNonQuery`: execute SQL that does not return rows.
+- `Invoke-OraclePlSql`: execute PL/SQL blocks and capture output parameters.
+- `Invoke-OracleSqlFile`: execute supported SQL script files.
+- `Export-OracleDelimitedFile`, `Export-OracleCsv`, `Export-OracleExcel`: export query results.
+- `New-OracleParameter`: create typed Oracle parameters for queries and PL/SQL.
+
+## Optional Helpers
+
+Optional, non-core helpers live under `.\Optional`.
+They are not imported or exported by the module unless you deliberately dot-source them.
+
+- `.\Optional\ExcelAutomation` contains an Excel COM automation helper for filling workbook templates, optionally running macros, and saving workbooks or PDFs. See `.\Optional\ExcelAutomation\README.md` for its separate risk notes and examples.
 
 ## JAMS Note
 
@@ -48,21 +80,29 @@ Import-Module .\PSOracleTools.psd1 -Force
 ```
 
 Importing the module also initializes the Oracle managed client automatically.
-You can inspect the active configuration at any time with:
+You can inspect the loaded client paths and active module configuration at any time with:
 
 ```powershell
 Initialize-OracleClient | Format-List *
+Get-OracleModuleConfiguration | Format-List *
 ```
 
 ## Connecting
 
-There are three main connection patterns:
+There are four main connection patterns:
 
 ### 1. Raw connection string
 
 ```powershell
 $cs = New-OracleConnectionString -DataSource 'mydb_low' -UserId 'app_user' -Password 'secret'
 Test-OracleConnection -ConnectionString $cs
+```
+
+`New-OracleConnectionString` uses Oracle's connection string builder, so values such as passwords containing semicolons are escaped correctly.
+For quick interactive use, the data source, user id, and password can also be positional:
+
+```powershell
+$cs = New-OracleConnectionString mydb_low app_user secret
 ```
 
 ### 2. PSCredential
@@ -72,17 +112,55 @@ $cred = Get-Credential
 Test-OracleConnection -Credential $cred -DataSource 'mydb_low'
 ```
 
-### 3. Saved credential name
+### 3. Saved credential name plus data source
 
 ```powershell
 Set-OracleCredential -Name 'ProdLow' -UserName 'APP_USER'
 Test-OracleConnection -CredentialName 'ProdLow' -CredentialDataSource 'mydb_low'
 ```
 
+The common credential commands accept the credential name positionally:
+
+```powershell
+Set-OracleCredential ProdLow APP_USER
+Get-OracleCredential ProdLow
+Remove-OracleCredential ProdLow -Confirm:$false
+```
+
+### 4. Saved connection profile
+
+```powershell
+Set-OracleConnectionProfile -Name 'ProdLow' -DataSource 'mydb_low' -CredentialName 'ProdLow'
+Test-OracleConnection -ProfileName 'ProdLow'
+```
+
+Profiles are usually the cleanest option for repeatable scripts because they keep the data source, credential name, timeouts, and logging defaults in one named record.
+The basic profile create/get/remove flow also supports positional names and required values:
+
+```powershell
+Set-OracleConnectionProfile ProdLow mydb_low ProdLow
+Get-OracleConnectionProfile ProdLow
+Remove-OracleConnectionProfile ProdLow -Confirm:$false
+```
+
+`New-OracleConnectionString` also exposes pooling and connection timeout options:
+
+```powershell
+New-OracleConnectionString `
+  -DataSource 'mydb_low' `
+  -UserId 'app_user' `
+  -Password 'secret' `
+  -Pooling $true `
+  -MinPoolSize 1 `
+  -MaxPoolSize 10 `
+  -ConnectionTimeout 30
+```
+
 ## Credential Storage
 
 Saved credentials are stored as a JSON file containing the user name and an encrypted password string.
 By default, the module uses a credential store under the current user's PowerShell tools directory.
+If you use SecretManagement-backed credentials, the JSON file stores metadata only and the password lives in the configured vault.
 
 You can also use a custom credential store path:
 
@@ -216,6 +294,14 @@ Set-OracleModuleConfiguration -ProfileStorePath '.\config\oracle-profiles.json'
 Invoke-OracleQuery -ProfileName 'ProdLow' -Sql 'select sysdate from dual'
 ```
 
+## Timeouts
+
+`ConnectionTimeout` controls how long the driver waits while opening a connection.
+It can be supplied to `New-OracleConnectionString`, `Test-OracleConnection`, or stored on a connection profile.
+
+`CommandTimeout` controls how long Oracle commands may run after a connection is open.
+Query, scalar, non-query, PL/SQL, SQL-file, and export commands all accept `-CommandTimeout`, and profiles can store a default command timeout.
+
 ## Query Examples
 
 ### Scalar
@@ -225,6 +311,33 @@ Invoke-OracleScalar `
   -CredentialName 'ProdLow' `
   -CredentialDataSource 'mydb_low' `
   -Sql 'select count(*) from ps_tools.movies'
+```
+
+## Result Objects
+
+`Invoke-OracleQuery` intentionally returns dynamic row objects whose properties match the selected columns.
+Operational commands return stable, typed status objects with common fields such as:
+
+- `Success`
+- `Operation`
+- `DataSource`
+- `ProfileName`
+- `StartedOn`
+- `CompletedOn`
+- `ElapsedMs`
+
+For example, export commands return `PSOracleTools.CsvExportResult`, `PSOracleTools.DelimitedExportResult`, or `PSOracleTools.ExcelExportResult`.
+`Invoke-OracleSqlFile` returns `PSOracleTools.SqlFileResult`, with nested `PSOracleTools.SqlFileStatementResult` objects in `Statements`.
+
+`Invoke-OraclePlSql` keeps output parameters in a stable `OutputParameters` hashtable by default.
+For interactive use, add `-OutputAsProperties` to also expose output parameters as top-level properties:
+
+```powershell
+Invoke-OraclePlSql `
+  -ProfileName 'ProdLow' `
+  -PlSql 'begin select count(*) into :movie_count from ps_tools.movies; end;' `
+  -Parameters @($outCount) `
+  -OutputAsProperties
 ```
 
 ### Query
@@ -245,6 +358,7 @@ fetch first 5 rows only
 
 ```powershell
 $p = New-OracleParameter -Name 'movie_id' -Value 1 -OracleDbType Int32
+$p = New-OracleParameter movie_id 1 Int32
 
 Invoke-OracleQuery `
   -CredentialName 'ProdLow' `
@@ -256,6 +370,33 @@ where movie_id = :movie_id
 "@ `
   -Parameters @($p)
 ```
+
+For simple input parameters, you can also pass a hashtable:
+
+```powershell
+Invoke-OracleQuery `
+  -ProfileName 'ProdLow' `
+  -Sql 'select movie_id, movie_nm from ps_tools.movies where movie_id = :movie_id' `
+  -Parameters @{ movie_id = 1 }
+```
+
+Use `New-OracleParameter` when you need an explicit Oracle type, parameter size, or non-input direction such as `Output`.
+
+## Positional Parameter Notes
+
+Short positional forms are supported for the commands where the argument order is obvious:
+
+- `Set-OracleCredential ProdLow APP_USER`
+- `Set-OracleCredential ProdLow $cred`
+- `Get-OracleCredential ProdLow`
+- `Remove-OracleCredential ProdLow -Confirm:$false`
+- `Set-OracleConnectionProfile ProdLow mydb_low ProdLow`
+- `Get-OracleConnectionProfile ProdLow`
+- `Remove-OracleConnectionProfile ProdLow -Confirm:$false`
+- `New-OracleConnectionString mydb_low app_user secret`
+- `New-OracleParameter movie_id 1 Int32`
+
+Connection commands such as `Invoke-OracleQuery`, `Invoke-OracleSqlFile`, and `Test-OracleConnection` support several different connection styles, so their connection arguments are clearer when named.
 
 ## Non-Query And PL/SQL Examples
 

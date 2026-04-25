@@ -159,6 +159,7 @@ function Export-OracleDelimitedFile {
         [switch]$LogParameters
     )
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -305,14 +306,19 @@ function Export-OracleDelimitedFile {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $rowCount, $sw.ElapsedMilliseconds)
         }
 
-        [pscustomobject]@{
-            Success       = $true
-            Path          = $Path
-            RowCount      = $rowCount
-            ColumnCount   = $columnCount
-            FileSizeBytes = $fileSizeBytes
-            ElapsedMs     = $sw.ElapsedMilliseconds
-        }
+        New-OracleResult -TypeName 'PSOracleTools.DelimitedExportResult' -Property ([ordered]@{
+                Success       = $true
+                Operation     = 'Export-OracleDelimitedFile'
+                DataSource    = $connection.DataSource
+                ProfileName   = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                Path          = $Path
+                StartedOn     = $startedOn
+                CompletedOn   = Get-Date
+                ElapsedMs     = $sw.ElapsedMilliseconds
+                RowCount      = $rowCount
+                ColumnCount   = $columnCount
+                FileSizeBytes = $fileSizeBytes
+            })
     }
     catch {
         $sw.Stop()

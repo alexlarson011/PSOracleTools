@@ -31,30 +31,35 @@ Connection timeout in seconds.
 New-OracleConnectionString -DataSource 'mydb_low' -UserId 'app_user' -Password 'secret'
 
 Builds a simple Oracle connection string.
+
+.EXAMPLE
+New-OracleConnectionString mydb_low app_user secret
+
+Builds a simple Oracle connection string using positional arguments.
 #>
 function New-OracleConnectionString {
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     param(
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 0)]
         [string]$DataSource,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 1)]
         [string]$UserId,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, Position = 2)]
         [string]$Password,
 
-        [Parameter()]
+        [Parameter(Position = 3)]
         [bool]$Pooling = $true,
 
-        [Parameter()]
+        [Parameter(Position = 4)]
         [int]$MinPoolSize = 1,
 
-        [Parameter()]
+        [Parameter(Position = 5)]
         [int]$MaxPoolSize = 10
         ,
 
-        [Parameter()]
+        [Parameter(Position = 6)]
         [int]$ConnectionTimeout = 30
     )
 

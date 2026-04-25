@@ -18,14 +18,19 @@ Get-OracleCredential
 Lists all saved credential records.
 
 .EXAMPLE
+Get-OracleCredential ProdLow
+
+Returns one saved credential record using a positional name.
+
+.EXAMPLE
 Get-OracleCredential -Name 'ProdLow' -CredentialStorePath '.\config\oracle-creds.json'
 
 Returns one saved credential record from a custom store path.
 #>
 function Get-OracleCredential {
-    [CmdletBinding()]
+    [CmdletBinding(PositionalBinding = $false)]
     param(
-        [Parameter()]
+        [Parameter(Position = 0)]
         [string]$Name,
 
         [Parameter()]

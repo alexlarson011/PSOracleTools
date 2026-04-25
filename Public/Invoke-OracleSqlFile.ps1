@@ -120,6 +120,7 @@ function Invoke-OracleSqlFile {
         }
     }
 
+    $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $connection = $null
     $command = $null
@@ -209,12 +210,14 @@ function Invoke-OracleSqlFile {
                     Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile statement succeeded; Path={0}; DataSource={1}; StatementIndex={2}; Kind={3}; RowsAffected={4}; ElapsedMs={5}" -f $Path, $connection.DataSource, $statement.Index, $statement.Kind, $rowsAffected, $statementSw.ElapsedMilliseconds)
                 }
 
-                $statementResults.Add([pscustomobject]@{
+                $statementResults.Add((New-OracleResult -TypeName 'PSOracleTools.SqlFileStatementResult' -Property ([ordered]@{
                         Index        = $statement.Index
                         Kind         = $statement.Kind
+                        IsDdl        = Test-OracleDdlStatement -StatementText $statement.Text
+                        Succeeded    = $true
                         RowsAffected = $rowsAffected
                         ElapsedMs    = $statementSw.ElapsedMilliseconds
-                    }) | Out-Null
+                    }))) | Out-Null
             }
             catch {
                 $statementSw.Stop()
@@ -244,16 +247,21 @@ function Invoke-OracleSqlFile {
             Write-OracleLog -Path $LogPath -Message ("Invoke-OracleSqlFile succeeded; Path={0}; DataSource={1}; StatementCount={2}; ElapsedMs={3}" -f $Path, $connection.DataSource, $statementResults.Count, $sw.ElapsedMilliseconds)
         }
 
-        return [pscustomobject]@{
-            Success        = $true
-            Path           = $Path
-            StatementCount = $statementResults.Count
-            ElapsedMs      = $sw.ElapsedMilliseconds
-            TransactionUsed = [bool]$UseTransaction
-            Committed      = $transactionCommitted
-            RolledBack     = $transactionRolledBack
-            Statements     = $statementResults.ToArray()
-        }
+        return New-OracleResult -TypeName 'PSOracleTools.SqlFileResult' -Property ([ordered]@{
+                Success         = $true
+                Operation       = 'Invoke-OracleSqlFile'
+                DataSource      = $connection.DataSource
+                ProfileName     = if ($PSCmdlet.ParameterSetName -eq 'ByProfileName') { $ProfileName } else { $null }
+                Path            = $Path
+                StartedOn       = $startedOn
+                CompletedOn     = Get-Date
+                ElapsedMs       = $sw.ElapsedMilliseconds
+                StatementCount  = $statementResults.Count
+                TransactionUsed = [bool]$UseTransaction
+                Committed       = $transactionCommitted
+                RolledBack      = $transactionRolledBack
+                Statements      = $statementResults.ToArray()
+            })
     }
     catch {
         $sw.Stop()

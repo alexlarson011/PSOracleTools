@@ -70,6 +70,18 @@ Invoke-OracleScalar `
   -Sql 'select count(*) from ps_tools.movies'
 ```
 
+### PL/SQL
+
+```powershell
+$outCount = New-OracleParameter -Name 'movie_count' -OracleDbType Int32 -Direction Output
+
+Invoke-OraclePlSql `
+  -ProfileName 'ProdLow' `
+  -PlSql 'begin select count(*) into :movie_count from ps_tools.movies; end;' `
+  -Parameters @($outCount) `
+  -OutputAsProperties
+```
+
 ### SQL file
 
 ```powershell
