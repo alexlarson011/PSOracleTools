@@ -4,7 +4,7 @@ Tests connectivity to an Oracle database.
 
 .DESCRIPTION
 Attempts to open an Oracle connection and run a simple scalar query against dual.
-Supports a raw connection string, a PSCredential, or a saved credential name.
+Supports a raw connection string, a PSCredential, a saved credential name, or a saved connection profile.
 Optional logging writes concise operational entries to the information stream and/or a file.
 
 .PARAMETER ConnectionString
@@ -30,6 +30,9 @@ Connection timeout in seconds.
 
 .PARAMETER CredentialStorePath
 Optional custom path to the credential store JSON file.
+
+.PARAMETER ProfileStorePath
+Optional custom path to the profile store JSON file.
 
 .PARAMETER Log
 Writes operational log entries to the information stream.

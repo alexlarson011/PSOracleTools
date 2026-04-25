@@ -8,6 +8,24 @@ Supports semicolon-terminated SQL statements and PL/SQL-style blocks terminated 
 This command does not emulate SQL*Plus directives such as SET, SPOOL, PROMPT, or @child.sql.
 Supports raw connection strings, PSCredential input, saved credential names, or saved connection profiles.
 
+.PARAMETER ConnectionString
+Full Oracle connection string.
+
+.PARAMETER Credential
+PSCredential used to build the Oracle connection string.
+
+.PARAMETER DataSource
+Oracle data source or TNS alias used with -Credential.
+
+.PARAMETER CredentialName
+Saved credential name used with -CredentialDataSource.
+
+.PARAMETER CredentialDataSource
+Oracle data source or TNS alias used with -CredentialName.
+
+.PARAMETER ProfileName
+Saved connection profile name.
+
 .PARAMETER Path
 Path to the SQL file to execute.
 
@@ -19,6 +37,9 @@ Saved connection profile name.
 
 .PARAMETER CredentialStorePath
 Optional custom path to the credential store JSON file.
+
+.PARAMETER ProfileStorePath
+Optional custom path to the profile store JSON file.
 
 .PARAMETER Log
 Writes operational log entries to the information stream.

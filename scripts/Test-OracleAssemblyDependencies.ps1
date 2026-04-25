@@ -1,3 +1,28 @@
+<#
+.SYNOPSIS
+Reports Oracle managed driver dependency diagnostics.
+
+.DESCRIPTION
+Inspects the bundled Oracle.ManagedDataAccess assembly and related dependencies in the module lib folder.
+The report shows runtime details, bundled assembly versions, dependency mismatches, and related assemblies already loaded in the current process.
+Use -TryModuleImport to attempt importing PSOracleTools after the dependency report.
+
+.PARAMETER DllPath
+Optional path to Oracle.ManagedDataAccess.dll. Defaults to the module's bundled DLL.
+
+.PARAMETER TryModuleImport
+Attempts to import the module after reporting dependency diagnostics.
+
+.EXAMPLE
+.\scripts\Test-OracleAssemblyDependencies.ps1
+
+Displays dependency diagnostics for the bundled Oracle managed driver.
+
+.EXAMPLE
+.\scripts\Test-OracleAssemblyDependencies.ps1 -TryModuleImport
+
+Displays dependency diagnostics and then attempts to import the module.
+#>
 param(
     [Parameter()]
     [string]$DllPath,

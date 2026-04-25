@@ -1,3 +1,66 @@
+<#
+.SYNOPSIS
+Fills an Excel template once per Oracle query row.
+
+.DESCRIPTION
+Runs an Oracle query through PSOracleTools, opens a Microsoft Excel workbook template through COM automation, writes row values into mapped cells, optionally runs custom workbook logic or a macro, and saves one output workbook or PDF per row.
+This optional helper requires Microsoft Excel to be installed and is intended for controlled desktop or scheduled-task automation, not high-volume server-side reporting.
+
+.PARAMETER ProfileName
+Saved PSOracleTools connection profile used to run the Oracle query.
+
+.PARAMETER Sql
+SQL query text. Use either -Sql or -SqlPath.
+
+.PARAMETER SqlPath
+Path to a file containing SQL query text. Use either -Sql or -SqlPath.
+
+.PARAMETER Parameters
+Optional bind parameters supplied as a hashtable or OracleParameter objects.
+
+.PARAMETER TemplatePath
+Path to the Excel workbook template to open for each query row.
+
+.PARAMETER OutputDirectory
+Directory where generated workbooks or PDFs are saved. The directory is created if it does not exist.
+
+.PARAMETER OutputFileNameTemplate
+Output file name template. Use query column tokens such as {MOVIE_ID} and the special {RowNumber} token.
+
+.PARAMETER WorksheetName
+Worksheet to fill. Defaults to the first worksheet.
+
+.PARAMETER CellMap
+Hashtable mapping Excel cell addresses to query column names, such as @{ 'B2' = 'MOVIE_ID' }.
+
+.PARAMETER EachWorkbook
+Optional script block called for each workbook after CellMap values are written. Receives $Workbook, $Worksheet, and $Row.
+
+.PARAMETER AutoFit
+Auto-fits used rows and columns before saving.
+
+.PARAMETER RunMacro
+Excel macro name to run after filling the workbook.
+
+.PARAMETER SaveAs
+Output format. Use Workbook to save a workbook or Pdf to export as PDF.
+
+.PARAMETER ContinueOnError
+Returns failed row results and continues instead of throwing on the first row failure.
+
+.PARAMETER Visible
+Shows the Excel application while automation runs.
+
+.EXAMPLE
+Invoke-OracleExcelTemplate -ProfileName ps_tools -Sql 'select movie_id, movie_nm from movies' -TemplatePath '.\templates\movie-template.xlsx' -OutputDirectory '.\output' -OutputFileNameTemplate 'Movie-{MOVIE_ID}.xlsx' -CellMap @{ 'B2' = 'MOVIE_ID'; 'B3' = 'MOVIE_NM' }
+
+Fills one workbook per movie row using mapped cells.
+
+.EXAMPLE
+Invoke-OracleExcelTemplate -ProfileName ps_tools -SqlPath '.\queries\movie-reports.sql' -TemplatePath '.\templates\movie-template.xlsm' -OutputDirectory '.\output' -OutputFileNameTemplate 'Movie-{MOVIE_ID}.xlsm' -CellMap @{ 'B2' = 'MOVIE_ID' } -RunMacro 'Module1.AfterFill' -ContinueOnError
+
+Fills macro-enabled workbooks, runs a macro, and returns failed row results instead of stopping immediately.
+#>
 function Invoke-OracleExcelTemplate {
     [CmdletBinding()]
     param(

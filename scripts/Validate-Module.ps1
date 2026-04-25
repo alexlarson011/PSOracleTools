@@ -1,3 +1,15 @@
+<#
+.SYNOPSIS
+Runs lightweight validation for the PSOracleTools module.
+
+.DESCRIPTION
+Validates the module manifest, imports the module, checks the exported command surface, verifies comment-help discovery and parameter coverage, and runs focused regression checks for connection string escaping, positional helper commands, SQL script parsing, and transaction DDL detection.
+
+.EXAMPLE
+.\scripts\Validate-Module.ps1
+
+Runs the repository-local validation pass.
+#>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -58,6 +70,53 @@ foreach ($name in $helpTargets) {
     $help = Get-Help $name -ErrorAction Stop
     if (-not $help.Synopsis) {
         throw "Help synopsis missing for [$name]."
+    }
+}
+
+Write-Host 'Checking help parameter coverage...'
+$helpScriptPaths = @(
+    Get-ChildItem -Path (Join-Path -Path $repoRoot -ChildPath 'Public') -Filter '*.ps1'
+    Get-ChildItem -Path (Join-Path -Path $repoRoot -ChildPath 'Optional') -Filter '*.ps1' -Recurse -ErrorAction SilentlyContinue
+    Get-ChildItem -Path (Join-Path -Path $repoRoot -ChildPath 'scripts') -Filter '*.ps1' -Recurse
+)
+
+foreach ($scriptPath in $helpScriptPaths) {
+    $scriptText = Get-Content -LiteralPath $scriptPath.FullName -Raw
+    if ($scriptText -notmatch '(?s)^\s*<#.*?\.SYNOPSIS.*?#>') {
+        throw "Comment-based help is missing for [$($scriptPath.FullName)]."
+    }
+
+    $tokens = $null
+    $parseErrors = $null
+    $scriptAst = [System.Management.Automation.Language.Parser]::ParseInput($scriptText, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        throw "Unable to parse [$($scriptPath.FullName)] while checking help coverage: $($parseErrors[0].Message)"
+    }
+
+    $functionAst = $scriptAst.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
+    $paramBlock = if ($functionAst) { $functionAst.Body.ParamBlock } else { $scriptAst.ParamBlock }
+    $actualParameters = if ($paramBlock) {
+        @($paramBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath } | Sort-Object -Unique)
+    }
+    else {
+        @()
+    }
+
+    $documentedParameters = @(
+        [regex]::Matches($scriptText, '(?m)^\.PARAMETER\s+(\w+)') |
+            ForEach-Object { $_.Groups[1].Value } |
+            Sort-Object -Unique
+    )
+
+    $undocumentedParameters = @($actualParameters | Where-Object { $_ -notin $documentedParameters })
+    $unknownParameters = @($documentedParameters | Where-Object { $_ -notin $actualParameters })
+
+    if ($undocumentedParameters.Count -gt 0) {
+        throw "Help is missing parameter(s) for [$($scriptPath.FullName)]: $($undocumentedParameters -join ', ')"
+    }
+
+    if ($unknownParameters.Count -gt 0) {
+        throw "Help documents unknown parameter(s) for [$($scriptPath.FullName)]: $($unknownParameters -join ', ')"
     }
 }
 
