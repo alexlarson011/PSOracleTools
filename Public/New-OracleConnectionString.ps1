@@ -58,15 +58,14 @@ function New-OracleConnectionString {
         [int]$ConnectionTimeout = 30
     )
 
-    $builder = New-Object System.Text.StringBuilder
+    $builder = New-Object Oracle.ManagedDataAccess.Client.OracleConnectionStringBuilder
+    $builder['User Id'] = $UserId
+    $builder['Password'] = $Password
+    $builder['Data Source'] = $DataSource
+    $builder['Pooling'] = $Pooling
+    $builder['Min Pool Size'] = $MinPoolSize
+    $builder['Max Pool Size'] = $MaxPoolSize
+    $builder['Connection Timeout'] = $ConnectionTimeout
 
-    [void]$builder.Append("User Id=$UserId;")
-    [void]$builder.Append("Password=$Password;")
-    [void]$builder.Append("Data Source=$DataSource;")
-    [void]$builder.Append("Pooling=$Pooling;")
-    [void]$builder.Append("Min Pool Size=$MinPoolSize;")
-    [void]$builder.Append("Max Pool Size=$MaxPoolSize;")
-    [void]$builder.Append("Connection Timeout=$ConnectionTimeout;")
-
-    return $builder.ToString()
+    return $builder.ConnectionString
 }

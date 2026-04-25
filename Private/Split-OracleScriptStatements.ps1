@@ -8,6 +8,7 @@ function Split-OracleScriptStatements {
     function Get-StatementKind {
         param(
             [Parameter(Mandatory)]
+            [AllowEmptyString()]
             [string]$StatementText
         )
 
@@ -204,6 +205,9 @@ function Split-OracleScriptStatements {
 
         if ($char -eq "`n") {
             [void]$buffer.Append($char)
+            if (Test-OracleClientDirective -StatementText $buffer.ToString()) {
+                $buffer.Clear() | Out-Null
+            }
             $lineBuilder.Clear() | Out-Null
             $statementKind = Get-StatementKind -StatementText $buffer.ToString()
             continue

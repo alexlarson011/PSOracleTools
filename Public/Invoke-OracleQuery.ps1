@@ -134,7 +134,15 @@ function Invoke-OracleQuery {
 
                 $resolvedCredential = Resolve-OracleCredential -CredentialName ([string]$resolvedProfile.CredentialName) -CredentialStorePath $CredentialStorePath
                 $targetDataSource = [string]$resolvedProfile.DataSource
-                $cs = New-OracleConnectionString -DataSource $targetDataSource -UserId $resolvedCredential.UserName -Password ($resolvedCredential.GetNetworkCredential().Password)
+                $connectionStringParameters = @{
+                    DataSource = $targetDataSource
+                    UserId     = $resolvedCredential.UserName
+                    Password   = $resolvedCredential.GetNetworkCredential().Password
+                }
+                if ($resolvedProfile.ConnectionTimeout) {
+                    $connectionStringParameters.ConnectionTimeout = [int]$resolvedProfile.ConnectionTimeout
+                }
+                $cs = New-OracleConnectionString @connectionStringParameters
             }
         }
 

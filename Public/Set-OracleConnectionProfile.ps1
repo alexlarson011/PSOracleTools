@@ -50,7 +50,8 @@ function Set-OracleConnectionProfile {
         [Parameter(Mandatory)]
         [string]$DataSource,
 
-        [Parameter()]
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
         [string]$CredentialName,
 
         [Parameter()]
