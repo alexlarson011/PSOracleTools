@@ -25,6 +25,7 @@ Runs the target script in a fresh Windows PowerShell process.
 
 Runs a script with positional arguments from a specific working directory.
 #>
+[CmdletBinding()]
 param(
     [Parameter(Mandatory)]
     [string]$ScriptPath,
@@ -39,32 +40,62 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$resolvedScriptPath = (Resolve-Path -LiteralPath $ScriptPath).ProviderPath
+$exitCode = 1
 
-if (-not $WorkingDirectory) {
-    $WorkingDirectory = Split-Path -Path $resolvedScriptPath -Parent
-}
-
-$powershellExe = if (-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
-    Join-Path -Path $env:WINDIR -ChildPath 'SysNative\WindowsPowerShell\v1.0\powershell.exe'
-}
-else {
-    Join-Path -Path $env:WINDIR -ChildPath 'System32\WindowsPowerShell\v1.0\powershell.exe'
-}
-
-$invocationArguments = @(
-    '-NoProfile',
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $resolvedScriptPath
-) + $ScriptArguments
-
-Push-Location -LiteralPath $WorkingDirectory
 try {
-    & $powershellExe @invocationArguments
-    $exitCode = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
+    $resolvedScriptPath = (Resolve-Path -LiteralPath $ScriptPath -ErrorAction Stop).ProviderPath
+
+    if (-not $WorkingDirectory) {
+        $WorkingDirectory = Split-Path -Path $resolvedScriptPath -Parent
+    }
+
+    $resolvedWorkingDirectory = (Resolve-Path -LiteralPath $WorkingDirectory -ErrorAction Stop).ProviderPath
+
+    $powershellExe = if (-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
+        Join-Path -Path $env:WINDIR -ChildPath 'SysNative\WindowsPowerShell\v1.0\powershell.exe'
+    }
+    else {
+        Join-Path -Path $env:WINDIR -ChildPath 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    }
+
+    if (-not (Test-Path -LiteralPath $powershellExe)) {
+        throw "Windows PowerShell executable was not found at: $powershellExe"
+    }
+
+    $invocationArguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $resolvedScriptPath
+    ) + $ScriptArguments
+
+    Write-Output "Starting child Windows PowerShell process."
+    Write-Output "Script path: $resolvedScriptPath"
+    Write-Output "Working directory: $resolvedWorkingDirectory"
+
+    Push-Location -LiteralPath $resolvedWorkingDirectory
+    try {
+        & $powershellExe @invocationArguments
+
+        $exitCode = if ($null -ne $LASTEXITCODE) {
+            [int]$LASTEXITCODE
+        }
+        else {
+            0
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Write-Output "Child PowerShell process exit code: $exitCode"
+
+    if ($exitCode -ne 0) {
+        throw "Child PowerShell process failed with exit code: $exitCode"
+    }
 }
-finally {
-    Pop-Location
+catch {
+    Write-Error "Invoke-InFreshWindowsPowerShell failed. $($_.Exception.Message)"
+    throw
 }
 
-exit $exitCode
+exit 0
