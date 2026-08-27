@@ -58,6 +58,10 @@ Quotes every field in the output.
 Writes values without delimiters or field quoting. Use SQL LPAD or RPAD expressions to
 format each column to its required width.
 
+.PARAMETER Encoding
+Text encoding for the output file. Utf8Bom is the default and writes a UTF-8 byte order mark.
+Use Utf8NoBom for UTF-8 output without a byte order mark.
+
 .PARAMETER TrailingDelimiter
 Appends the delimiter character to the end of each written row.
 
@@ -152,6 +156,10 @@ function Export-OracleDelimitedFile {
 
         [Parameter()]
         [switch]$FixedWidth,
+
+        [Parameter()]
+        [ValidateSet('Utf8Bom', 'Utf8NoBom')]
+        [string]$Encoding = 'Utf8Bom',
 
         [Parameter()]
         [switch]$TrailingDelimiter,
@@ -308,7 +316,11 @@ function Export-OracleDelimitedFile {
 
         $reader = $command.ExecuteReader()
         $columnCount = [int]$reader.FieldCount
-        $writer = New-Object System.IO.StreamWriter($Path, $false, [System.Text.Encoding]::UTF8)
+        $textEncoding = switch ($Encoding) {
+            'Utf8Bom' { New-Object System.Text.UTF8Encoding($true) }
+            'Utf8NoBom' { New-Object System.Text.UTF8Encoding($false) }
+        }
+        $writer = New-Object System.IO.StreamWriter($Path, $false, $textEncoding)
         $outputDelimiter = if ($FixedWidth) { '' } else { $Delimiter }
 
         if ($IncludeHeader) {

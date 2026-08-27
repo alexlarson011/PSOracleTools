@@ -505,6 +505,8 @@ Export-OracleDelimitedFile `
 Use `-FixedWidth` for files whose column widths are produced in SQL with `LPAD` or `RPAD`.
 It writes the selected values directly next to each other: no delimiters, quotes, or quote escaping are added.
 Do not use `-QuoteAll` or `-TrailingDelimiter` with this option.
+Delimited exports use UTF-8 with a byte order mark (BOM) by default. Use `-Encoding Utf8NoBom`
+when the receiving system requires UTF-8 without a BOM.
 
 ```powershell
 Export-OracleDelimitedFile `
@@ -516,7 +518,8 @@ from ps_tools.movies
 order by movie_id
 "@ `
   -Path '.\output\movies.txt' `
-  -FixedWidth
+  -FixedWidth `
+  -Encoding Utf8NoBom
 ```
 
 ### CSV export
@@ -571,6 +574,8 @@ Delimited and CSV exports also support:
 - `-DateFormat 'yyyy-MM-dd'`
 - `-DateTimeFormat 'yyyy-MM-dd HH:mm:ss'`
 - `-Culture 'en-US'`
+
+Delimited exports also support `-Encoding Utf8Bom` (default) and `-Encoding Utf8NoBom`.
 
 ## Logging
 
