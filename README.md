@@ -486,6 +486,25 @@ Export-OracleDelimitedFile `
   -NoClobber
 ```
 
+### Fixed-width export
+
+Use `-FixedWidth` for files whose column widths are produced in SQL with `LPAD` or `RPAD`.
+It writes the selected values directly next to each other: no delimiters, quotes, or quote escaping are added.
+Do not use `-QuoteAll` or `-TrailingDelimiter` with this option.
+
+```powershell
+Export-OracleDelimitedFile `
+  -ProfileName 'ProdLow' `
+  -Sql @"
+select rpad(movie_id, 10) as movie_id,
+       rpad(movie_nm, 40) as movie_nm
+from ps_tools.movies
+order by movie_id
+"@ `
+  -Path '.\output\movies.txt' `
+  -FixedWidth
+```
+
 ### CSV export
 
 ```powershell

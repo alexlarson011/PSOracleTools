@@ -54,6 +54,10 @@ Culture name used for delimited number and date formatting.
 .PARAMETER QuoteAll
 Quotes every field in the output.
 
+.PARAMETER FixedWidth
+Writes values without delimiters or field quoting. Use SQL LPAD or RPAD expressions to
+format each column to its required width.
+
 .PARAMETER TrailingDelimiter
 Appends the delimiter character to the end of each written row.
 
@@ -147,6 +151,9 @@ function Export-OracleDelimitedFile {
         [switch]$QuoteAll,
 
         [Parameter()]
+        [switch]$FixedWidth,
+
+        [Parameter()]
         [switch]$TrailingDelimiter,
 
         [Parameter()]
@@ -206,6 +213,14 @@ function Export-OracleDelimitedFile {
 
         if ([string]::IsNullOrWhiteSpace($Sql)) {
             throw 'SQL query text cannot be empty.'
+        }
+
+        if ($FixedWidth -and $QuoteAll) {
+            throw '-FixedWidth cannot be used with -QuoteAll.'
+        }
+
+        if ($FixedWidth -and $TrailingDelimiter) {
+            throw '-FixedWidth cannot be used with -TrailingDelimiter.'
         }
 
         $formatCulture = if ($Culture) {
@@ -294,21 +309,22 @@ function Export-OracleDelimitedFile {
         $reader = $command.ExecuteReader()
         $columnCount = [int]$reader.FieldCount
         $writer = New-Object System.IO.StreamWriter($Path, $false, [System.Text.Encoding]::UTF8)
+        $outputDelimiter = if ($FixedWidth) { '' } else { $Delimiter }
 
         if ($IncludeHeader) {
             $header = for ($i = 0; $i -lt $columnCount; $i++) {
-                ConvertTo-DelimitedValue -Value $reader.GetName($i) -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll -Culture $formatCulture
+                ConvertTo-DelimitedValue -Value $reader.GetName($i) -Delimiter $outputDelimiter -NullValue $NullValue -QuoteAll:$QuoteAll -NoQuote:$FixedWidth -Culture $formatCulture
             }
-            $writer.WriteLine(($header -join $Delimiter))
+            $writer.WriteLine(($header -join $outputDelimiter))
         }
 
         while ($reader.Read()) {
             $line = for ($i = 0; $i -lt $columnCount; $i++) {
                 $value = if ($reader.IsDBNull($i)) { $null } else { $reader.GetValue($i) }
-                ConvertTo-DelimitedValue -Value $value -Delimiter $Delimiter -NullValue $NullValue -QuoteAll:$QuoteAll -DateFormat $DateFormat -DateTimeFormat $DateTimeFormat -Culture $formatCulture
+                ConvertTo-DelimitedValue -Value $value -Delimiter $outputDelimiter -NullValue $NullValue -QuoteAll:$QuoteAll -NoQuote:$FixedWidth -DateFormat $DateFormat -DateTimeFormat $DateTimeFormat -Culture $formatCulture
             }
 
-            $outputLine = ($line -join $Delimiter)
+            $outputLine = ($line -join $outputDelimiter)
             if ($TrailingDelimiter) {
                 $outputLine += $Delimiter
             }

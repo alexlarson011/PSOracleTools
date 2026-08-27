@@ -14,6 +14,9 @@ function ConvertTo-DelimitedValue {
         [switch]$QuoteAll,
 
         [Parameter()]
+        [switch]$NoQuote,
+
+        [Parameter()]
         [string]$DateFormat,
 
         [Parameter()]
@@ -57,6 +60,10 @@ function ConvertTo-DelimitedValue {
     }
     else {
         $text = [string]$Value
+    }
+
+    if ($NoQuote) {
+        return $text
     }
 
     $mustQuote = $QuoteAll -or
