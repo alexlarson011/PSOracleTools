@@ -51,6 +51,7 @@ The module exports these public commands:
 - `Invoke-OracleScalar`: return a single scalar value.
 - `Invoke-OracleNonQuery`: execute SQL that does not return rows.
 - `Invoke-OraclePlSql`: execute PL/SQL blocks and capture output parameters.
+- `Invoke-OracleProcedure`: execute a stored procedure and capture output parameters.
 - `Invoke-OracleSqlFile`: execute supported SQL script files.
 - `Export-OracleDelimitedFile`, `Export-OracleCsv`, `Export-OracleExcel`: export query results.
 - `New-OracleParameter`: create typed Oracle parameters for queries and PL/SQL.
@@ -439,6 +440,19 @@ Invoke-OracleSqlFile `
   -Path '.\scripts\refresh_movies.sql' `
   -Log `
   -LogPath '.\logs\oracle.log'
+```
+
+### Stored procedure
+
+`Invoke-OracleProcedure` creates the anonymous PL/SQL block for an unquoted procedure name.
+Procedure names may be qualified as `procedure`, `package.procedure`, or `schema.package.procedure`.
+Its parameters are bound by name, and it follows the module's normal ODP.NET auto-commit behavior.
+
+```powershell
+Invoke-OracleProcedure `
+  -ProfileName 'ProdLow' `
+  -Procedure 'ps_tools.movie_pkg.load_movies' `
+  -Parameters @{ batch_id = 42 }
 ```
 
 `Invoke-OracleSqlFile` parses and executes supported statements in order on one Oracle connection.

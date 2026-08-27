@@ -39,6 +39,7 @@ $expectedFunctions = @(
     'Invoke-OracleNonQuery',
     'Invoke-OracleSqlFile',
     'Invoke-OraclePlSql',
+    'Invoke-OracleProcedure',
     'Export-OracleDelimitedFile',
     'Export-OracleCsv',
     'Export-OracleExcel',
