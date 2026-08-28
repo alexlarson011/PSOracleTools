@@ -28,7 +28,7 @@ It does not connect to Oracle. The automated Pester suite covers parsing, comman
 behavior, and result formatting without requiring a database. Run it when Pester is installed:
 
 ```powershell
-Invoke-Pester .\tests -Output Detailed
+Invoke-Pester .\tests
 ```
 
 ## Suggested Manual Smoke Tests

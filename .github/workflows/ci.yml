@@ -1,0 +1,25 @@
+name: Validate module
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pester
+        shell: powershell
+        run: |
+          Install-Module Pester -RequiredVersion 3.4.0 -Scope CurrentUser -Force
+          Import-Module Pester -RequiredVersion 3.4.0
+
+      - name: Validate manifest and command surface
+        shell: powershell
+        run: .\scripts\Validate-Module.ps1
+
+      - name: Run Pester tests
+        shell: powershell
+        run: Invoke-Pester .\tests
