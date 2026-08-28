@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to this project are documented here.
+
+## 1.1.0 - Unreleased
+
+### Added
+
+- `-WhatIf` and `-Confirm` support for mutating Oracle commands and profile/credential writes.
+- Pester regression coverage and a Windows PowerShell CI workflow.
+
+### Changed
+
+- Expanded operational, credential-portability, logging, compatibility, and scheduler documentation.
+
+## 1.0.0
+
+- Initial public release with profiles, SecretManagement-backed credentials, query and execution commands, SQL-file transactions, and delimited/CSV/Excel exports.

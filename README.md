@@ -23,11 +23,43 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
   - `TNS_ADMIN` should point to the folder containing `tnsnames.ora` and wallet files
 
 The module ships with `Oracle.ManagedDataAccess.dll` and the managed dependencies it needs in the local `lib` folder.
+The supported host is 64-bit Windows PowerShell 5.1. Validate the bundled driver against your Oracle server,
+wallet, and authentication configuration in a non-production environment before a rollout.
 
 Optional features have their own requirements:
 
 - Secret-backed credentials require `Microsoft.PowerShell.SecretManagement` and a registered vault extension, such as `Microsoft.PowerShell.SecretStore` or `Az.KeyVault`.
 - Optional Excel template automation under `.\Optional\ExcelAutomation` requires Microsoft Excel installed on Windows.
+
+## Five-minute quick start
+
+For an interactive session, create a credential and profile once, test it, then run a parameterized query:
+
+```powershell
+Import-Module .\PSOracleTools.psd1 -Force
+
+Set-OracleCredential -Name 'DevCred' -UserName 'APP_USER'
+Set-OracleConnectionProfile -Name 'Dev' -DataSource 'mydb_low' -CredentialName 'DevCred'
+Test-OracleConnection -ProfileName 'Dev'
+
+Invoke-OracleQuery -ProfileName 'Dev' `
+  -Sql 'select movie_id, movie_nm from ps_tools.movies where movie_id = :movie_id' `
+  -Parameters @{ movie_id = 1 }
+```
+
+For unattended jobs, use a registered SecretManagement vault rather than the default local credential store.
+Run the job under the same identity that can read that vault, and test it through the scheduler before production use.
+
+## Choosing a connection method
+
+| Method | Best for | Notes |
+| --- | --- | --- |
+| `-ConnectionString` | Short-lived local experiments | Avoid placing passwords in source code or command history. |
+| `-Credential` + `-DataSource` | Interactive scripts | Keeps the password out of the connection-string literal. |
+| `-CredentialName` + `-CredentialDataSource` | Reusable scripts on one Windows identity | Uses the credential store selected for that session. |
+| `-ProfileName` | Standard scripts and scheduled jobs | Centralizes data source, credential, timeout, and logging defaults. |
+
+Use SecretManagement-backed credentials for service accounts, scheduled tasks, and any situation where a credential needs to be managed outside one interactive Windows profile.
 
 ## Validation
 
@@ -87,6 +119,10 @@ You can inspect the loaded client paths and active module configuration at any t
 Initialize-OracleClient | Format-List *
 Get-OracleModuleConfiguration | Format-List *
 ```
+
+Automatic initialization is intentional and is the compatibility default: scripts that import the module can call
+the public commands immediately. It loads assemblies but does not open a database connection. If initialization
+fails, run `Initialize-OracleClient` directly to see the full diagnostics.
 
 ## Connecting
 
@@ -162,6 +198,10 @@ New-OracleConnectionString `
 Saved credentials are stored as a JSON file containing the user name and an encrypted password string.
 By default, the module uses a credential store under the current user's PowerShell tools directory.
 If you use SecretManagement-backed credentials, the JSON file stores metadata only and the password lives in the configured vault.
+
+> **Important:** the default encrypted password uses Windows DPAPI for the current Windows user. The credential
+> store is not portable to another machine or Windows account, including a scheduler running as a service account.
+> Do not copy the JSON store between hosts. Use SecretManagement for scheduled or multi-host automation.
 
 You can also use a custom credential store path:
 
@@ -599,6 +639,33 @@ Invoke-OracleQuery `
 
 Logging includes start/success/failure messages, elapsed time, and relevant summary details.
 It does not log passwords or decrypted credentials.
+
+`-LogSql` can still expose sensitive business data when SQL literals, comments, object names, or filters are logged.
+`-LogParameters` logs names and types, not values. Keep SQL logging disabled by default, restrict access to log
+files, and avoid enabling `LogSql` as a profile default unless the target environment is approved for it.
+
+## Safety for write operations
+
+`Invoke-OracleNonQuery`, `Invoke-OraclePlSql`, `Invoke-OracleProcedure`, `Invoke-OracleSqlFile`, and the profile
+and credential setters support PowerShell's common `-WhatIf` and `-Confirm` parameters. Use `-WhatIf` to verify
+the target and action without opening an Oracle connection or changing a credential/profile store:
+
+```powershell
+Invoke-OracleNonQuery -ProfileName 'ProdLow' `
+  -Sql 'delete from ps_tools.movies where movie_id = :movie_id' `
+  -Parameters @{ movie_id = 99 } `
+  -WhatIf
+```
+
+`Invoke-OracleSqlFile -WhatIf` still reads and parses the file so unsupported syntax and DDL transaction guards
+are reported before a deployment.
+
+## Troubleshooting
+
+- **TNS alias or wallet connection fails:** verify `TNS_ADMIN` for the exact account that starts PowerShell or the scheduler, and confirm it can read `tnsnames.ora` and wallet files.
+- **Works interactively but fails in a scheduler:** compare the Windows identity, 64-bit PowerShell host, `TNS_ADMIN`, and SecretManagement vault access. The JAMS wrapper below is useful for in-process host issues.
+- **Oracle assembly cannot load:** run `Initialize-OracleClient` and `.\scripts\Test-OracleAssemblyDependencies.ps1 -TryModuleImport` to collect dependency diagnostics.
+- **SQL file behaves differently from SQL*Plus/SQLcl:** this command intentionally supports statement boundaries and a limited directive set; it does not process includes, substitution variables, or full client commands.
 
 ## SQL Text Notes
 
