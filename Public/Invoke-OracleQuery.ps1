@@ -34,8 +34,8 @@ Optional bind parameters supplied as a hashtable or OracleParameter objects.
 .PARAMETER CommandTimeout
 Command timeout in seconds.
 
-.PARAMETER ProfileName
-Saved connection profile name.
+.PARAMETER MaxRows
+Optional maximum number of rows to return. Use it to bound memory use for exploratory queries.
 
 .PARAMETER CredentialStorePath
 Optional custom path to the credential store JSON file.
@@ -94,6 +94,10 @@ function Invoke-OracleQuery {
 
         [Parameter()]
         [int]$CommandTimeout = 300,
+
+        [Parameter()]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int]$MaxRows,
 
         [Parameter()]
         [string]$CredentialStorePath,
@@ -170,7 +174,7 @@ function Invoke-OracleQuery {
         $normalizedSql = Normalize-OracleCommandText -Text $Sql -Mode Sql
 
         if ($Log -or $LogPath) {
-            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery started; DataSource={0}; CommandTimeout={1}" -f $targetDataSource, $CommandTimeout)
+            Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery started; DataSource={0}; CommandTimeout={1}; MaxRows={2}" -f $targetDataSource, $CommandTimeout, $MaxRows)
             if ($LogSql) {
                 Write-OracleLog -Path $LogPath -Message ("Invoke-OracleQuery SQL: {0}" -f (ConvertTo-OracleLogText -Text $normalizedSql))
             }
@@ -186,7 +190,11 @@ function Invoke-OracleQuery {
         Add-OracleParameters -Command $command -Parameters $Parameters
 
         $reader = $command.ExecuteReader()
-        $result = ConvertFrom-OracleDataReader -Reader $reader
+        $readerParameters = @{ Reader = $reader }
+        if ($PSBoundParameters.ContainsKey('MaxRows')) {
+            $readerParameters.MaxRows = $MaxRows
+        }
+        $result = ConvertFrom-OracleDataReader @readerParameters
         $rowCount = @($result).Count
 
         if ($Log -or $LogPath) {

@@ -27,6 +27,10 @@ Describe 'PSOracleTools public contract' {
         $builder['User Id'] | Should Be 'user=one'
         $builder['Password'] | Should Be 'pa;ss'
     }
+
+    It 'exposes a bounded-row option for exploratory queries' {
+        (Get-Command Invoke-OracleQuery).Parameters.ContainsKey('MaxRows') | Should Be $true
+    }
 }
 
 Describe 'PSOracleTools SQL parsing' {
@@ -60,6 +64,21 @@ Describe 'PSOracleTools write safeguards' {
         try {
             Set-Content -LiteralPath $path -Value 'select * from dual;'
             { Invoke-OracleSqlFile -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Path $path -WhatIf } | Should Not Throw
+        }
+        finally {
+            Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews parsed SQL without requiring connection arguments' {
+        $path = [System.IO.Path]::GetTempFileName()
+        try {
+            Set-Content -LiteralPath $path -Value "create table example_table (id number);`nselect * from dual;"
+            $preview = Invoke-OracleSqlFile -Path $path -Preview
+
+            $preview.Preview | Should Be $true
+            $preview.StatementCount | Should Be 2
+            $preview.Statements[0].IsDdl | Should Be $true
         }
         finally {
             Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue

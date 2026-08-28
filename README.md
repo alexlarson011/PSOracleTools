@@ -395,6 +395,12 @@ fetch first 5 rows only
 "@
 ```
 
+For interactive exploration, use `-MaxRows` to bound the number of in-memory result objects:
+
+```powershell
+Invoke-OracleQuery -ProfileName 'ProdLow' -Sql 'select * from ps_tools.movies order by movie_id' -MaxRows 100
+```
+
 ### Parameterized query
 
 ```powershell
@@ -499,6 +505,14 @@ Invoke-OracleProcedure `
 It supports semicolon-terminated SQL statements and PL/SQL-style blocks terminated by a slash on its own line.
 It skips common client-side directives such as `set`, `spool`, `prompt`, `define`, `undefine`, `remark`, and `whenever`.
 It is still not a full SQL*Plus-style script runner and does not process commands such as `@child.sql`.
+
+Preview a script before execution—no connection arguments are needed for this mode:
+
+```powershell
+Invoke-OracleSqlFile -Path '.\scripts\load_movies.sql' -Preview |
+  Select-Object -ExpandProperty Statements |
+  Format-Table Index, Kind, IsDdl, Text -Wrap
+```
 
 For data-load or refresh scripts, you can run all statements in one transaction:
 

@@ -56,6 +56,9 @@ Executes all statements in one Oracle transaction. Commits only after every stat
 .PARAMETER AllowDdlInTransaction
 Allows obvious DDL or DCL statements when -UseTransaction is supplied. Oracle may implicitly commit DDL, so rollback safety is not guaranteed for those scripts.
 
+.PARAMETER Preview
+Parses the SQL file and returns statement metadata without requiring or opening an Oracle connection.
+
 .EXAMPLE
 Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\refresh_movies.sql'
 
@@ -70,6 +73,11 @@ Executes a SQL file with logging enabled.
 Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\load_movies.sql' -UseTransaction
 
 Executes a SQL file in one transaction and rolls back all statements if any statement fails.
+
+.EXAMPLE
+Invoke-OracleSqlFile -Path '.\scripts\deploy_movies.sql' -Preview
+
+Lists parsed statements and their DDL classification without executing the file.
 #>
 function Invoke-OracleSqlFile {
     [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
@@ -118,6 +126,11 @@ function Invoke-OracleSqlFile {
 
         [Parameter()]
         [switch]$AllowDdlInTransaction
+
+        ,
+
+        [Parameter(Mandatory, ParameterSetName = 'Preview')]
+        [switch]$Preview
     )
 
     if (-not (Test-Path -Path $Path -PathType Leaf)) {
@@ -132,6 +145,28 @@ function Invoke-OracleSqlFile {
     $statements = @(Split-OracleScriptStatements -Text $sqlText)
     if ($statements.Count -eq 0) {
         throw "SQL file did not contain any executable statements: $Path"
+    }
+
+    if ($Preview) {
+        $previewStatements = @(
+            $statements | ForEach-Object {
+                New-OracleResult -TypeName 'PSOracleTools.SqlFilePreviewStatement' -Property ([ordered]@{
+                        Index = $_.Index
+                        Kind  = $_.Kind
+                        IsDdl = Test-OracleDdlStatement -StatementText $_.Text
+                        Text  = $_.Text
+                    })
+            }
+        )
+
+        return New-OracleResult -TypeName 'PSOracleTools.SqlFilePreviewResult' -Property ([ordered]@{
+                Success        = $true
+                Operation      = 'Invoke-OracleSqlFile'
+                Preview        = $true
+                Path           = $Path
+                StatementCount = $previewStatements.Count
+                Statements     = $previewStatements
+            })
     }
 
     if ($UseTransaction -and -not $AllowDdlInTransaction) {

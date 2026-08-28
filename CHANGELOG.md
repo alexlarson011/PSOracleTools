@@ -7,6 +7,8 @@ All notable changes to this project are documented here.
 ### Added
 
 - `-WhatIf` and `-Confirm` support for mutating Oracle commands and profile/credential writes.
+- `Invoke-OracleSqlFile -Preview` for connection-free statement inspection and DDL classification.
+- `Invoke-OracleQuery -MaxRows` to bound in-memory exploratory query results.
 - Pester regression coverage and a Windows PowerShell CI workflow.
 
 ### Changed
