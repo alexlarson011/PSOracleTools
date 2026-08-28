@@ -59,6 +59,10 @@ Describe 'PSOracleTools write safeguards' {
         { Invoke-OraclePlSql -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -PlSql 'begin null; end;' -WhatIf } | Should Not Throw
     }
 
+    It 'does not open a connection for Invoke-OracleProcedure -WhatIf' {
+        { Invoke-OracleProcedure -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Procedure 'example_package.example_procedure' -WhatIf } | Should Not Throw
+    }
+
     It 'does not execute a parsed SQL file for -WhatIf' {
         $path = [System.IO.Path]::GetTempFileName()
         try {
@@ -90,6 +94,20 @@ Describe 'PSOracleTools write safeguards' {
         $path = Join-Path $directory 'profiles.json'
         try {
             Set-OracleConnectionProfile -Name 'NoWrite' -DataSource 'example' -CredentialName 'example' -ProfileStorePath $path -WhatIf
+            (Test-Path -LiteralPath $path) | Should Be $false
+        }
+        finally {
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'does not create a credential store for Set-OracleCredential -WhatIf' {
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $path = Join-Path $directory 'credentials.json'
+        $password = ConvertTo-SecureString -String 'not-a-real-password' -AsPlainText -Force
+        $credential = New-Object PSCredential('example', $password)
+        try {
+            Set-OracleCredential -Name 'NoWrite' -Credential $credential -CredentialStorePath $path -WhatIf
             (Test-Path -LiteralPath $path) | Should Be $false
         }
         finally {
