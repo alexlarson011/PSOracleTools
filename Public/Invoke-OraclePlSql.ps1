@@ -69,7 +69,7 @@ Invoke-OraclePlSql -ProfileName 'ProdLow' -PlSql 'begin select count(*) into :mo
 Returns output parameters as top-level properties in addition to the stable OutputParameters hashtable.
 #>
 function Invoke-OraclePlSql {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,

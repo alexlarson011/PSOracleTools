@@ -60,7 +60,7 @@ Invoke-OracleNonQuery -ProfileName 'ProdLow' -Sql 'delete from ps_tools.movies w
 Executes a parameterized non-query statement using a saved connection profile.
 #>
 function Invoke-OracleNonQuery {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,

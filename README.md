@@ -684,6 +684,16 @@ Invoke-OracleNonQuery -ProfileName 'ProdLow' `
 `Invoke-OracleSqlFile -WhatIf` still reads and parses the file so unsupported syntax and DDL transaction guards
 are reported before a deployment.
 
+These commands do not prompt by default, preserving existing unattended scripts. Add `-Confirm` when an interactive
+confirmation is appropriate; use `-Confirm:$false` only when a calling script intentionally suppresses confirmation.
+
+## Credential and profile store concurrency
+
+Credential and profile updates take an exclusive per-store lock and publish the updated JSON atomically. Concurrent
+writers therefore preserve each other's changes, while readers see either the previous complete file or the new
+complete file. A small `<store>.lock` file is retained beside each store; it is normal and should not be deleted
+while jobs might be running. Keep stores on a Windows-compatible local or SMB filesystem that honors file locks.
+
 ## Troubleshooting
 
 - **TNS alias or wallet connection fails:** verify `TNS_ADMIN` for the exact account that starts PowerShell or the scheduler, and confirm it can read `tnsnames.ora` and wallet files.

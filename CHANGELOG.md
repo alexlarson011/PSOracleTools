@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 1.1.1 - Unreleased
+
+### Fixed
+
+- Restored non-interactive defaults for write commands while keeping explicit `-WhatIf` and `-Confirm` support.
+- Made credential and profile JSON updates lock-protected and atomic to avoid concurrent-writer data loss.
+
 ## 1.1.0 - Unreleased
 
 ### Added

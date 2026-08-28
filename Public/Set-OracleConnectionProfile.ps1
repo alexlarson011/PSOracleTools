@@ -86,13 +86,6 @@ function Set-OracleConnectionProfile {
     }
 
     $path = Get-OracleProfileStorePath -ProfileStorePath $ProfileStorePath
-    $profiles = @()
-
-    if (Test-Path -Path $path) {
-        $profiles = Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile'
-    }
-
-    $profiles = @($profiles | Where-Object { $_.Name -ne $Name })
 
     $profile = [pscustomobject]@{
         Name                = $Name
@@ -107,14 +100,13 @@ function Set-OracleConnectionProfile {
         UpdatedOn           = Get-Date
     }
 
-    $profiles += $profile
+    Update-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile' -Update {
+        param($profiles)
 
-    $directory = Split-Path -Path $path -Parent
-    if ($directory -and -not (Test-Path -Path $directory)) {
-        New-Item -Path $directory -ItemType Directory -Force | Out-Null
-    }
-
-    $profiles | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+        $updatedProfiles = @($profiles | Where-Object { $_.Name -ne $Name })
+        $updatedProfiles += $profile
+        return $updatedProfiles
+    } | Out-Null
 
     New-OracleResult -TypeName 'PSOracleTools.ConnectionProfileSetResult' -Property ([ordered]@{
         Success   = $true

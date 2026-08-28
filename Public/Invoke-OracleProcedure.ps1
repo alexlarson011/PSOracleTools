@@ -68,7 +68,7 @@ Invoke-OracleProcedure -ProfileName 'ProdLow' -Procedure 'ps_tools.movie_pkg.get
 Executes a stored procedure and returns its output parameter.
 #>
 function Invoke-OracleProcedure {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,

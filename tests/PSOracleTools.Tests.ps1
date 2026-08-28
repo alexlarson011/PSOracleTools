@@ -114,4 +114,71 @@ Describe 'PSOracleTools write safeguards' {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'writes profile changes without a default confirmation prompt' {
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $path = Join-Path $directory 'profiles.json'
+        $originalConfirmPreference = $ConfirmPreference
+        try {
+            $ConfirmPreference = 'High'
+            Set-OracleConnectionProfile -Name 'NoPrompt' -DataSource 'example' -CredentialName 'example' -ProfileStorePath $path | Out-Null
+            (Test-Path -LiteralPath $path) | Should Be $true
+        }
+        finally {
+            $ConfirmPreference = $originalConfirmPreference
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves repeated profile updates in valid JSON' {
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $path = Join-Path $directory 'profiles.json'
+        try {
+            Set-OracleConnectionProfile -Name 'ConcurrentOne' -DataSource 'ConcurrentOne' -CredentialName 'ConcurrentOne' -ProfileStorePath $path -Confirm:$false | Out-Null
+            Set-OracleConnectionProfile -Name 'ConcurrentTwo' -DataSource 'ConcurrentTwo' -CredentialName 'ConcurrentTwo' -ProfileStorePath $path -Confirm:$false | Out-Null
+            $names = @(Get-OracleConnectionProfile -ProfileStorePath $path | Select-Object -ExpandProperty Name | Sort-Object)
+            $names | Should Be @('ConcurrentOne', 'ConcurrentTwo')
+            { Get-Content -LiteralPath $path -Raw | ConvertFrom-Json | Out-Null } | Should Not Throw
+        }
+        finally {
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'waits for an exclusive profile-store lock rather than overwriting it' {
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $path = Join-Path $directory 'profiles.json'
+        $lockPath = "$path.lock"
+        $readyPath = Join-Path $directory 'lock-ready.txt'
+        $job = $null
+        try {
+            New-Item -Path $directory -ItemType Directory -Force | Out-Null
+            $job = Start-Job -ScriptBlock {
+                param($LockPath, $ReadyPath)
+                $stream = New-Object System.IO.FileStream($LockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+                try {
+                    Set-Content -LiteralPath $ReadyPath -Value 'ready'
+                    Start-Sleep -Seconds 3
+                }
+                finally {
+                    $stream.Dispose()
+                }
+            } -ArgumentList $lockPath, $readyPath
+
+            $deadline = (Get-Date).AddSeconds(5)
+            while (-not (Test-Path -LiteralPath $readyPath) -and (Get-Date) -lt $deadline) {
+                Start-Sleep -Milliseconds 50
+            }
+            (Test-Path -LiteralPath $readyPath) | Should Be $true
+
+            { & $module { param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } } $path } | Should Throw
+        }
+        finally {
+            if ($job) {
+                $job | Wait-Job | Receive-Job -ErrorAction SilentlyContinue | Out-Null
+                $job | Remove-Job -Force -ErrorAction SilentlyContinue
+            }
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }

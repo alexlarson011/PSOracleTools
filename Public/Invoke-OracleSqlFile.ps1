@@ -80,7 +80,7 @@ Invoke-OracleSqlFile -Path '.\scripts\deploy_movies.sql' -Preview
 Lists parsed statements and their DDL classification without executing the file.
 #>
 function Invoke-OracleSqlFile {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,

@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '1.1.0'
+    ModuleVersion     = '1.1.1'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -42,7 +42,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = 'https://github.com/alexlarson011/PSOracleTools/blob/main/LICENSE'
             ProjectUri = 'https://github.com/alexlarson011/PSOracleTools'
-            ReleaseNotes = 'Version 1.1.0 adds WhatIf/Confirm safety controls for database and local-store changes, Pester coverage, CI validation, and expanded security, scheduler, and troubleshooting documentation.'
+            ReleaseNotes = 'Version 1.1.1 restores non-interactive defaults for write commands and adds atomic, lock-protected credential and profile store updates.'
         }
     }
 }
