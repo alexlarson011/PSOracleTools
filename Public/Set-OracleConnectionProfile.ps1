@@ -47,7 +47,7 @@ Set-OracleConnectionProfile ProdLow mydb_low ProdCred
 Creates a simple reusable connection profile using positional arguments.
 #>
 function Set-OracleConnectionProfile {
-    [CmdletBinding(PositionalBinding = $false)]
+    [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, Position = 0)]
         [string]$Name,
@@ -81,14 +81,11 @@ function Set-OracleConnectionProfile {
         [string]$ProfileStorePath
     )
 
-    $path = Get-OracleProfileStorePath -ProfileStorePath $ProfileStorePath
-    $profiles = @()
-
-    if (Test-Path -Path $path) {
-        $profiles = Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile'
+    if (-not $PSCmdlet.ShouldProcess("connection profile [$Name]", 'Create or replace Oracle connection profile')) {
+        return
     }
 
-    $profiles = @($profiles | Where-Object { $_.Name -ne $Name })
+    $path = Get-OracleProfileStorePath -ProfileStorePath $ProfileStorePath
 
     $profile = [pscustomobject]@{
         Name                = $Name
@@ -103,14 +100,13 @@ function Set-OracleConnectionProfile {
         UpdatedOn           = Get-Date
     }
 
-    $profiles += $profile
+    Update-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile' -Update {
+        param($profiles)
 
-    $directory = Split-Path -Path $path -Parent
-    if ($directory -and -not (Test-Path -Path $directory)) {
-        New-Item -Path $directory -ItemType Directory -Force | Out-Null
-    }
-
-    $profiles | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+        $updatedProfiles = @($profiles | Where-Object { $_.Name -ne $Name })
+        $updatedProfiles += $profile
+        return $updatedProfiles
+    } | Out-Null
 
     New-OracleResult -TypeName 'PSOracleTools.ConnectionProfileSetResult' -Property ([ordered]@{
         Success   = $true

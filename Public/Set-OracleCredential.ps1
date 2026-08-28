@@ -46,7 +46,7 @@ Set-OracleCredential -Name 'ProdLow' -Credential $cred -SecretVault 'AzKV'
 Stores the password in a registered SecretManagement vault and stores only credential metadata in the module credential store.
 #>
 function Set-OracleCredential {
-    [CmdletBinding(DefaultParameterSetName = 'ByUserName', PositionalBinding = $false)]
+    [CmdletBinding(DefaultParameterSetName = 'ByUserName', PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByUserName')]
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByCredential')]
@@ -71,6 +71,10 @@ function Set-OracleCredential {
         [string]$SecretName
     )
 
+    if (-not $PSCmdlet.ShouldProcess("credential [$Name]", 'Create or replace Oracle credential metadata')) {
+        return
+    }
+
     if (-not $Credential) {
         if (-not $UserName) {
             throw 'Provide either -Credential or -UserName.'
@@ -80,13 +84,6 @@ function Set-OracleCredential {
     }
 
     $path = Get-OracleCredentialStorePath -CredentialStorePath $CredentialStorePath
-    $records = @()
-
-    if (Test-Path -Path $path) {
-        $records = Read-OracleNamedRecordStore -Path $path -StoreDescription 'credential'
-    }
-
-    $records = @($records | Where-Object { $_.Name -ne $Name })
 
     $useSecretManagement = $PSBoundParameters.ContainsKey('SecretVault') -or $PSBoundParameters.ContainsKey('SecretName')
 
@@ -132,12 +129,13 @@ function Set-OracleCredential {
         }
     }
 
-    $records += $newRecord
-    $directory = Split-Path -Path $path -Parent
-    if ($directory -and -not (Test-Path -Path $directory)) {
-        New-Item -Path $directory -ItemType Directory -Force | Out-Null
-    }
-    $records | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+    Update-OracleNamedRecordStore -Path $path -StoreDescription 'credential' -Update {
+        param($records)
+
+        $updatedRecords = @($records | Where-Object { $_.Name -ne $Name })
+        $updatedRecords += $newRecord
+        return $updatedRecords
+    } | Out-Null
 
     New-OracleResult -TypeName 'PSOracleTools.CredentialSetResult' -Property ([ordered]@{
         Success          = $true

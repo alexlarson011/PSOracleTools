@@ -24,6 +24,13 @@ This checks:
 - exported public commands
 - help discovery for selected commands
 
+It does not connect to Oracle. The automated Pester suite covers parsing, command safety, credential/profile file
+behavior (including concurrent profile writes), and result formatting without requiring a database. Run it when Pester is installed:
+
+```powershell
+Invoke-Pester .\tests
+```
+
 ## Suggested Manual Smoke Tests
 
 Use a known-good Oracle data source and credential.
@@ -41,6 +48,23 @@ Get-OracleModuleConfiguration | Format-List *
 ```powershell
 Test-OracleConnection -ProfileName 'ProdLow' | Format-List *
 ```
+
+### Read-only live smoke test
+
+After automated checks pass, run the repository helper against a non-production profile first:
+
+```powershell
+.\scripts\Test-LiveOracle.ps1 -ProfileName 'ProdLow' | Format-List *
+```
+
+It verifies connection, database/session identity, `-MaxRows`, and CSV export without issuing DDL, DML, PL/SQL,
+or procedure calls. The returned `CsvPath` identifies the temporary output file for inspection.
+
+### Scheduler identity
+
+Run the same smoke test from the account that will run the scheduled job. Confirm `TNS_ADMIN`, wallet-file access,
+and SecretManagement vault access for that account. A DPAPI-backed credential created by one Windows account cannot
+be used by another account or host.
 
 ### Optional SecretManagement
 
@@ -133,3 +157,15 @@ It is not intended to emulate SQL*Plus or SQLcl script parsing. In particular, i
 - broader client-side substitution behavior
 
 When testing `-UseTransaction`, prefer DML-only scripts. Oracle can implicitly commit DDL, so `Invoke-OracleSqlFile -UseTransaction` blocks obvious DDL/DCL unless `-AllowDdlInTransaction` is supplied.
+
+## Write-operation safety check
+
+Before a production run, use `-WhatIf` with the same parameters. It must print the intended action without opening
+an Oracle connection or modifying local credential/profile files:
+
+```powershell
+Invoke-OracleNonQuery -ProfileName 'ProdLow' `
+  -Sql 'delete from ps_tools.movies where movie_id = :movie_id' `
+  -Parameters @{ movie_id = 99 } `
+  -WhatIf
+```

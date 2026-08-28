@@ -68,7 +68,7 @@ Invoke-OracleProcedure -ProfileName 'ProdLow' -Procedure 'ps_tools.movie_pkg.get
 Executes a stored procedure and returns its output parameter.
 #>
 function Invoke-OracleProcedure {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,
@@ -123,6 +123,17 @@ function Invoke-OracleProcedure {
     $identifierPattern = '^[A-Za-z][A-Za-z0-9_$#]*(\.[A-Za-z][A-Za-z0-9_$#]*){0,2}$'
     if ($Procedure -notmatch $identifierPattern) {
         throw 'Procedure must be an unquoted Oracle identifier with up to three dot-separated parts.'
+    }
+
+    $shouldProcessTarget = switch ($PSCmdlet.ParameterSetName) {
+        'ByProfileName' { "procedure [$Procedure] through profile [$ProfileName]" }
+        'ByCredential' { "procedure [$Procedure] on data source [$DataSource]" }
+        'ByCredentialName' { "procedure [$Procedure] on data source [$CredentialDataSource]" }
+        default { "procedure [$Procedure] through the supplied connection string" }
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($shouldProcessTarget, 'Execute Oracle procedure')) {
+        return
     }
 
     $parameterNames = @()

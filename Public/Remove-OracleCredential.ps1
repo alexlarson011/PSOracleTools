@@ -44,34 +44,40 @@ function Remove-OracleCredential {
         throw 'No credential store found.'
     }
 
-    $records = @(Read-OracleNamedRecordStore -Path $path -StoreDescription 'credential')
-    $record = $records | Where-Object { $_.Name -eq $Name } | Select-Object -First 1
-    $newRecords = @($records | Where-Object { $_.Name -ne $Name })
-
     if ($PSCmdlet.ShouldProcess($Name, 'Remove Oracle credential')) {
-        if ($RemoveSecret -and $record -and $record.PSObject.Properties['SecretName'] -and $record.SecretName) {
-            $availability = Test-OracleSecretManagementAvailable -RequiredCommand @('Remove-Secret')
-            if (-not $availability.Available) {
-                throw ('Microsoft.PowerShell.SecretManagement is required for -RemoveSecret. Missing command(s): {0}' -f ($availability.MissingCommands -join ', '))
+        $updateResult = Update-OracleNamedRecordStore -Path $path -StoreDescription 'credential' -Update {
+            param($records, $state)
+
+            $state['Record'] = $records | Where-Object { $_.Name -eq $Name } | Select-Object -First 1
+            if ($RemoveSecret -and $state['Record'] -and $state['Record'].PSObject.Properties['SecretName'] -and $state['Record'].SecretName) {
+                $availability = Test-OracleSecretManagementAvailable -RequiredCommand @('Remove-Secret')
+                if (-not $availability.Available) {
+                    throw ('Microsoft.PowerShell.SecretManagement is required for -RemoveSecret. Missing command(s): {0}' -f ($availability.MissingCommands -join ', '))
+                }
+
+                $removeSecretParameters = @{ Name = [string]$state['Record'].SecretName }
+                if ($state['Record'].PSObject.Properties['SecretVault'] -and $state['Record'].SecretVault) {
+                    $removeSecretParameters.Vault = [string]$state['Record'].SecretVault
+                }
+                Remove-Secret @removeSecretParameters
             }
 
-            $removeSecretParameters = @{
-                Name = [string]$record.SecretName
-            }
-            if ($record.PSObject.Properties['SecretVault'] -and $record.SecretVault) {
-                $removeSecretParameters.Vault = [string]$record.SecretVault
-            }
-            Remove-Secret @removeSecretParameters
+            return @($records | Where-Object { $_.Name -ne $Name })
         }
 
-        $newRecords | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+        $record = $updateResult.State['Record']
+        $removed = ($null -ne $record)
+    }
+    else {
+        $record = $null
+        $removed = $false
     }
 
     New-OracleResult -TypeName 'PSOracleTools.CredentialRemoveResult' -Property ([ordered]@{
         Success       = $true
         Operation     = 'Remove-OracleCredential'
         Name          = $Name
-        Removed       = ($records.Count -ne $newRecords.Count)
+        Removed       = $removed
         SecretRemoved = [bool]($RemoveSecret -and $record -and $record.PSObject.Properties['SecretName'] -and $record.SecretName)
     })
 }

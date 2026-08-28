@@ -37,17 +37,23 @@ function Remove-OracleConnectionProfile {
         throw "No profile store found at [$path]."
     }
 
-    $profiles = @(Read-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile')
-    $newProfiles = @($profiles | Where-Object { $_.Name -ne $Name })
-
     if ($PSCmdlet.ShouldProcess($Name, 'Remove Oracle connection profile')) {
-        $newProfiles | ConvertTo-Json -Depth 5 | Set-Content -Path $path -Encoding UTF8
+        $updateResult = Update-OracleNamedRecordStore -Path $path -StoreDescription 'connection profile' -Update {
+            param($profiles, $state)
+
+            $state['Removed'] = @($profiles | Where-Object { $_.Name -eq $Name }).Count -gt 0
+            return @($profiles | Where-Object { $_.Name -ne $Name })
+        }
+        $removed = [bool]$updateResult.State['Removed']
+    }
+    else {
+        $removed = $false
     }
 
     New-OracleResult -TypeName 'PSOracleTools.ConnectionProfileRemoveResult' -Property ([ordered]@{
         Success = $true
         Operation = 'Remove-OracleConnectionProfile'
         Name    = $Name
-        Removed = ($profiles.Count -ne $newProfiles.Count)
+        Removed = $removed
     })
 }

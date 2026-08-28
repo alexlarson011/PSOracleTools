@@ -1,6 +1,6 @@
 @{
     RootModule        = 'PSOracleTools.psm1'
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.1.1'
     GUID              = 'b7d4d8a2-2a4a-4a67-a7f6-6f3e70b0d0c1'
     Author            = 'Alex Larson'
     CompanyName       = 'Personal'
@@ -10,6 +10,7 @@
 
     FunctionsToExport = @(
         'Initialize-OracleClient',
+        'Get-OracleServerInfo',
         'New-OracleConnectionString',
         'Test-OracleConnection',
         'Set-OracleCredential',
@@ -41,7 +42,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = 'https://github.com/alexlarson011/PSOracleTools/blob/main/LICENSE'
             ProjectUri = 'https://github.com/alexlarson011/PSOracleTools'
-            ReleaseNotes = 'Version 1.0.0 adds connection profiles, SecretManagement-backed credentials, SQL file transactions, typed operational result objects, improved exports, optional Excel template automation, positional helper parameters, and expanded validation and help coverage.'
+            ReleaseNotes = 'Version 1.1.1 restores non-interactive defaults for write commands and adds atomic, lock-protected credential and profile store updates.'
         }
     }
 }
