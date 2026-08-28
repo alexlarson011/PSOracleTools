@@ -7,7 +7,7 @@ $module = Get-Module PSOracleTools
 Describe 'PSOracleTools public contract' {
     It 'exports the documented commands' {
         $expected = @(
-            'Initialize-OracleClient', 'New-OracleConnectionString', 'Test-OracleConnection',
+            'Initialize-OracleClient', 'Get-OracleServerInfo', 'New-OracleConnectionString', 'Test-OracleConnection',
             'Set-OracleCredential', 'Get-OracleCredential', 'Remove-OracleCredential',
             'Get-OracleModuleConfiguration', 'Set-OracleModuleConfiguration',
             'Set-OracleConnectionProfile', 'Get-OracleConnectionProfile', 'Remove-OracleConnectionProfile',

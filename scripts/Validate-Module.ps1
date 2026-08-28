@@ -24,6 +24,7 @@ $module = Import-Module $manifestPath -Force -PassThru
 
 $expectedFunctions = @(
     'Initialize-OracleClient',
+    'Get-OracleServerInfo',
     'New-OracleConnectionString',
     'Test-OracleConnection',
     'Set-OracleCredential',

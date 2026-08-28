@@ -10,6 +10,7 @@
 
     FunctionsToExport = @(
         'Initialize-OracleClient',
+        'Get-OracleServerInfo',
         'New-OracleConnectionString',
         'Test-OracleConnection',
         'Set-OracleCredential',

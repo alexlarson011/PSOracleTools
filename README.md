@@ -74,6 +74,7 @@ You can run a lightweight repo-local validation pass with:
 The module exports these public commands:
 
 - `Initialize-OracleClient`: load the bundled Oracle managed client and report client paths.
+- `Get-OracleServerInfo`: verify the connected Oracle database, service, server, and session identity.
 - `New-OracleConnectionString`: safely build an Oracle connection string.
 - `Test-OracleConnection`: test a raw, credential-based, or profile-based connection.
 - `Set-OracleCredential`, `Get-OracleCredential`, `Remove-OracleCredential`: manage saved Oracle credentials.
@@ -302,6 +303,9 @@ Use a profile:
 
 ```powershell
 Test-OracleConnection -ProfileName 'ProdLow'
+
+# Confirms the database, service, host, and Oracle session identity actually reached.
+Get-OracleServerInfo -ProfileName 'ProdLow' | Format-List *
 
 Invoke-OracleQuery `
   -ProfileName 'ProdLow' `

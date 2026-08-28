@@ -30,6 +30,7 @@ Initialize-OracleClient | Out-Null
 
 Export-ModuleMember -Function @(
     'Initialize-OracleClient',
+    'Get-OracleServerInfo',
     'New-OracleConnectionString',
     'Test-OracleConnection',
     'Set-OracleCredential',
