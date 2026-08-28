@@ -60,7 +60,7 @@ Invoke-OracleNonQuery -ProfileName 'ProdLow' -Sql 'delete from ps_tools.movies w
 Executes a parameterized non-query statement using a saved connection profile.
 #>
 function Invoke-OracleNonQuery {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,
@@ -107,6 +107,17 @@ function Invoke-OracleNonQuery {
         [Parameter()]
         [switch]$LogParameters
     )
+
+    $shouldProcessTarget = switch ($PSCmdlet.ParameterSetName) {
+        'ByProfileName' { "profile [$ProfileName]" }
+        'ByCredential' { "data source [$DataSource]" }
+        'ByCredentialName' { "data source [$CredentialDataSource]" }
+        default { 'the supplied connection string' }
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($shouldProcessTarget, 'Execute Oracle non-query SQL')) {
+        return
+    }
 
     $startedOn = Get-Date
     $sw = [System.Diagnostics.Stopwatch]::StartNew()

@@ -47,7 +47,7 @@ Set-OracleConnectionProfile ProdLow mydb_low ProdCred
 Creates a simple reusable connection profile using positional arguments.
 #>
 function Set-OracleConnectionProfile {
-    [CmdletBinding(PositionalBinding = $false)]
+    [CmdletBinding(PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, Position = 0)]
         [string]$Name,
@@ -80,6 +80,10 @@ function Set-OracleConnectionProfile {
         [Parameter()]
         [string]$ProfileStorePath
     )
+
+    if (-not $PSCmdlet.ShouldProcess("connection profile [$Name]", 'Create or replace Oracle connection profile')) {
+        return
+    }
 
     $path = Get-OracleProfileStorePath -ProfileStorePath $ProfileStorePath
     $profiles = @()

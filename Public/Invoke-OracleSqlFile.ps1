@@ -72,7 +72,7 @@ Invoke-OracleSqlFile -ProfileName 'ProdLow' -Path '.\scripts\load_movies.sql' -U
 Executes a SQL file in one transaction and rolls back all statements if any statement fails.
 #>
 function Invoke-OracleSqlFile {
-    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString')]
+    [CmdletBinding(DefaultParameterSetName = 'ByConnectionString', SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory, ParameterSetName = 'ByConnectionString')]
         [string]$ConnectionString,
@@ -139,6 +139,10 @@ function Invoke-OracleSqlFile {
         if ($ddlStatements.Count -gt 0) {
             throw ("-UseTransaction cannot be used with DDL/DCL statement(s) without -AllowDdlInTransaction. Oracle can implicitly commit DDL. Statement index(es): {0}" -f (($ddlStatements | Select-Object -ExpandProperty Index) -join ', '))
         }
+    }
+
+    if (-not $PSCmdlet.ShouldProcess($Path, "Execute $($statements.Count) Oracle SQL statement(s)")) {
+        return
     }
 
     $startedOn = Get-Date

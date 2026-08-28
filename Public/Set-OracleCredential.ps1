@@ -46,7 +46,7 @@ Set-OracleCredential -Name 'ProdLow' -Credential $cred -SecretVault 'AzKV'
 Stores the password in a registered SecretManagement vault and stores only credential metadata in the module credential store.
 #>
 function Set-OracleCredential {
-    [CmdletBinding(DefaultParameterSetName = 'ByUserName', PositionalBinding = $false)]
+    [CmdletBinding(DefaultParameterSetName = 'ByUserName', PositionalBinding = $false, SupportsShouldProcess, ConfirmImpact = 'Medium')]
     param(
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByUserName')]
         [Parameter(Mandatory, Position = 0, ParameterSetName = 'ByCredential')]
@@ -70,6 +70,10 @@ function Set-OracleCredential {
         [Parameter(ParameterSetName = 'ByCredential')]
         [string]$SecretName
     )
+
+    if (-not $PSCmdlet.ShouldProcess("credential [$Name]", 'Create or replace Oracle credential metadata')) {
+        return
+    }
 
     if (-not $Credential) {
         if (-not $UserName) {
