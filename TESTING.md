@@ -49,6 +49,17 @@ Get-OracleModuleConfiguration | Format-List *
 Test-OracleConnection -ProfileName 'ProdLow' | Format-List *
 ```
 
+### Read-only live smoke test
+
+After automated checks pass, run the repository helper against a non-production profile first:
+
+```powershell
+.\scripts\Test-LiveOracle.ps1 -ProfileName 'ProdLow' | Format-List *
+```
+
+It verifies connection, database/session identity, `-MaxRows`, and CSV export without issuing DDL, DML, PL/SQL,
+or procedure calls. The returned `CsvPath` identifies the temporary output file for inspection.
+
 ### Scheduler identity
 
 Run the same smoke test from the account that will run the scheduled job. Confirm `TNS_ADMIN`, wallet-file access,

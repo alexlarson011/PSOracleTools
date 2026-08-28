@@ -69,6 +69,12 @@ You can run a lightweight repo-local validation pass with:
 .\scripts\Validate-Module.ps1
 ```
 
+For a read-only live check after configuration, run:
+
+```powershell
+.\scripts\Test-LiveOracle.ps1 -ProfileName 'ProdLow' | Format-List *
+```
+
 ## Command Overview
 
 The module exports these public commands:
