@@ -13,7 +13,7 @@ jobs:
       - name: Import Pester
         shell: powershell
         run: |
-          Import-Module Pester -ErrorAction Stop
+          Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
           Get-Module Pester | Select-Object Name, Version, Path | Format-List
 
       - name: Validate manifest and command surface
@@ -22,11 +22,4 @@ jobs:
 
       - name: Run Pester tests
         shell: powershell
-        run: |
-          $pesterVersion = (Get-Module Pester).Version
-          if ($pesterVersion.Major -ge 5) {
-            Invoke-Pester -Path .\tests -CI
-          }
-          else {
-            Invoke-Pester .\tests
-          }
+        run: Invoke-Pester -Path .\tests -CI

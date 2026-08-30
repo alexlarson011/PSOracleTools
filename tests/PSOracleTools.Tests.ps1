@@ -1,58 +1,61 @@
-$repoRoot = Split-Path -Path $PSScriptRoot -Parent
-$manifestPath = Join-Path -Path $repoRoot -ChildPath 'PSOracleTools.psd1'
+Describe 'PSOracleTools' {
+BeforeAll {
+    $script:repoRoot = Split-Path -Path $PSScriptRoot -Parent
+    $script:manifestPath = Join-Path -Path $script:repoRoot -ChildPath 'PSOracleTools.psd1'
 
-Import-Module $manifestPath -Force
-$module = Get-Module PSOracleTools
+    Import-Module $script:manifestPath -Force
+    $script:module = Get-Module PSOracleTools
 
-function Assert-Equal {
-    param($Actual, $Expected, [string]$Message = 'Values are not equal.')
+    function script:Assert-Equal {
+        param($Actual, $Expected, [string]$Message = 'Values are not equal.')
 
-    if (-not [object]::Equals($Actual, $Expected)) {
-        throw ('{0} Expected [{1}], actual [{2}].' -f $Message, $Expected, $Actual)
-    }
-}
-
-function Assert-SequenceEqual {
-    param($Actual, $Expected, [string]$Message = 'Sequences are not equal.')
-
-    $actualItems = @($Actual)
-    $expectedItems = @($Expected)
-
-    if ($actualItems.Count -ne $expectedItems.Count) {
-        throw ('{0} Expected count [{1}], actual count [{2}].' -f $Message, $expectedItems.Count, $actualItems.Count)
-    }
-
-    for ($i = 0; $i -lt $expectedItems.Count; $i++) {
-        if (-not [object]::Equals($actualItems[$i], $expectedItems[$i])) {
-            throw ('{0} Difference at index [{1}]. Expected [{2}], actual [{3}].' -f $Message, $i, $expectedItems[$i], $actualItems[$i])
+        if (-not [object]::Equals($Actual, $Expected)) {
+            throw ('{0} Expected [{1}], actual [{2}].' -f $Message, $Expected, $Actual)
         }
     }
-}
 
-function Assert-True {
-    param([bool]$Condition, [string]$Message = 'Expected condition to be true.')
+    function script:Assert-SequenceEqual {
+        param($Actual, $Expected, [string]$Message = 'Sequences are not equal.')
 
-    if (-not $Condition) {
-        throw $Message
+        $actualItems = @($Actual)
+        $expectedItems = @($Expected)
+
+        if ($actualItems.Count -ne $expectedItems.Count) {
+            throw ('{0} Expected count [{1}], actual count [{2}].' -f $Message, $expectedItems.Count, $actualItems.Count)
+        }
+
+        for ($i = 0; $i -lt $expectedItems.Count; $i++) {
+            if (-not [object]::Equals($actualItems[$i], $expectedItems[$i])) {
+                throw ('{0} Difference at index [{1}]. Expected [{2}], actual [{3}].' -f $Message, $i, $expectedItems[$i], $actualItems[$i])
+            }
+        }
     }
-}
 
-function Assert-False {
-    param([bool]$Condition, [string]$Message = 'Expected condition to be false.')
+    function script:Assert-True {
+        param([bool]$Condition, [string]$Message = 'Expected condition to be true.')
 
-    if ($Condition) {
-        throw $Message
+        if (-not $Condition) {
+            throw $Message
+        }
     }
-}
 
-function Assert-NotThrow {
-    param([scriptblock]$ScriptBlock, [string]$Message = 'Expected script block not to throw.')
+    function script:Assert-False {
+        param([bool]$Condition, [string]$Message = 'Expected condition to be false.')
 
-    try {
-        & $ScriptBlock
+        if ($Condition) {
+            throw $Message
+        }
     }
-    catch {
-        throw ('{0} Error: {1}' -f $Message, $_.Exception.Message)
+
+    function script:Assert-NotThrow {
+        param([scriptblock]$ScriptBlock, [string]$Message = 'Expected script block not to throw.')
+
+        try {
+            & $ScriptBlock
+        }
+        catch {
+            throw ('{0} Error: {1}' -f $Message, $_.Exception.Message)
+        }
     }
 }
 
@@ -68,7 +71,7 @@ Describe 'PSOracleTools public contract' {
             'Export-OracleCsv', 'Export-OracleExcel', 'New-OracleParameter'
         )
 
-        Assert-SequenceEqual -Actual @($module.ExportedFunctions.Keys | Sort-Object) -Expected @($expected | Sort-Object)
+        Assert-SequenceEqual -Actual @($script:module.ExportedFunctions.Keys | Sort-Object) -Expected @($expected | Sort-Object)
     }
 
     It 'escapes connection-string values through the Oracle builder' {
@@ -87,7 +90,7 @@ Describe 'PSOracleTools public contract' {
 
 Describe 'PSOracleTools SQL parsing' {
     It 'keeps semicolons in quoted text and separates SQL statements' {
-        $statements = @($module.Invoke({
+        $statements = @($script:module.Invoke({
                 Split-OracleScriptStatements -Text "select 'a;b' as value from dual;`nselect 2 from dual;"
             }))
 
@@ -97,7 +100,7 @@ Describe 'PSOracleTools SQL parsing' {
     }
 
     It 'identifies DDL after leading comments' {
-        $isDdl = $module.Invoke({ Test-OracleDdlStatement -StatementText "/* deployment */`ncreate table example_table (id number)" })
+        $isDdl = $script:module.Invoke({ Test-OracleDdlStatement -StatementText "/* deployment */`ncreate table example_table (id number)" })
         Assert-True -Condition $isDdl
     }
 }
@@ -207,7 +210,7 @@ Describe 'PSOracleTools write safeguards' {
 
             $threw = $false
             try {
-                $module.Invoke({ param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } }, $path)
+                $script:module.Invoke({ param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } }, $path)
             }
             catch {
                 $threw = $true
@@ -219,4 +222,5 @@ Describe 'PSOracleTools write safeguards' {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+}
 }
