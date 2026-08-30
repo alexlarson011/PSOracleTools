@@ -4,6 +4,58 @@ $manifestPath = Join-Path -Path $repoRoot -ChildPath 'PSOracleTools.psd1'
 Import-Module $manifestPath -Force
 $module = Get-Module PSOracleTools
 
+function Assert-Equal {
+    param($Actual, $Expected, [string]$Message = 'Values are not equal.')
+
+    if (-not [object]::Equals($Actual, $Expected)) {
+        throw ('{0} Expected [{1}], actual [{2}].' -f $Message, $Expected, $Actual)
+    }
+}
+
+function Assert-SequenceEqual {
+    param($Actual, $Expected, [string]$Message = 'Sequences are not equal.')
+
+    $actualItems = @($Actual)
+    $expectedItems = @($Expected)
+
+    if ($actualItems.Count -ne $expectedItems.Count) {
+        throw ('{0} Expected count [{1}], actual count [{2}].' -f $Message, $expectedItems.Count, $actualItems.Count)
+    }
+
+    for ($i = 0; $i -lt $expectedItems.Count; $i++) {
+        if (-not [object]::Equals($actualItems[$i], $expectedItems[$i])) {
+            throw ('{0} Difference at index [{1}]. Expected [{2}], actual [{3}].' -f $Message, $i, $expectedItems[$i], $actualItems[$i])
+        }
+    }
+}
+
+function Assert-True {
+    param([bool]$Condition, [string]$Message = 'Expected condition to be true.')
+
+    if (-not $Condition) {
+        throw $Message
+    }
+}
+
+function Assert-False {
+    param([bool]$Condition, [string]$Message = 'Expected condition to be false.')
+
+    if ($Condition) {
+        throw $Message
+    }
+}
+
+function Assert-NotThrow {
+    param([scriptblock]$ScriptBlock, [string]$Message = 'Expected script block not to throw.')
+
+    try {
+        & $ScriptBlock
+    }
+    catch {
+        throw ('{0} Error: {1}' -f $Message, $_.Exception.Message)
+    }
+}
+
 Describe 'PSOracleTools public contract' {
     It 'exports the documented commands' {
         $expected = @(
@@ -16,58 +68,58 @@ Describe 'PSOracleTools public contract' {
             'Export-OracleCsv', 'Export-OracleExcel', 'New-OracleParameter'
         )
 
-        @($module.ExportedFunctions.Keys | Sort-Object) | Should Be @($expected | Sort-Object)
+        Assert-SequenceEqual -Actual @($module.ExportedFunctions.Keys | Sort-Object) -Expected @($expected | Sort-Object)
     }
 
     It 'escapes connection-string values through the Oracle builder' {
         $connectionString = New-OracleConnectionString -DataSource 'db;one' -UserId 'user=one' -Password 'pa;ss'
         $builder = New-Object Oracle.ManagedDataAccess.Client.OracleConnectionStringBuilder($connectionString)
 
-        $builder['Data Source'] | Should Be 'db;one'
-        $builder['User Id'] | Should Be 'user=one'
-        $builder['Password'] | Should Be 'pa;ss'
+        Assert-Equal -Actual $builder['Data Source'] -Expected 'db;one'
+        Assert-Equal -Actual $builder['User Id'] -Expected 'user=one'
+        Assert-Equal -Actual $builder['Password'] -Expected 'pa;ss'
     }
 
     It 'exposes a bounded-row option for exploratory queries' {
-        (Get-Command Invoke-OracleQuery).Parameters.ContainsKey('MaxRows') | Should Be $true
+        Assert-True -Condition (Get-Command Invoke-OracleQuery).Parameters.ContainsKey('MaxRows')
     }
 }
 
 Describe 'PSOracleTools SQL parsing' {
     It 'keeps semicolons in quoted text and separates SQL statements' {
-        $statements = @(& $module {
+        $statements = @($module.Invoke({
                 Split-OracleScriptStatements -Text "select 'a;b' as value from dual;`nselect 2 from dual;"
-            })
+            }))
 
-        $statements.Count | Should Be 2
-        $statements[0].Text | Should Be "select 'a;b' as value from dual"
-        $statements[1].Text | Should Be 'select 2 from dual'
+        Assert-Equal -Actual $statements.Count -Expected 2
+        Assert-Equal -Actual $statements[0].Text -Expected "select 'a;b' as value from dual"
+        Assert-Equal -Actual $statements[1].Text -Expected 'select 2 from dual'
     }
 
     It 'identifies DDL after leading comments' {
-        $isDdl = & $module { Test-OracleDdlStatement -StatementText "/* deployment */`ncreate table example_table (id number)" }
-        $isDdl | Should Be $true
+        $isDdl = $module.Invoke({ Test-OracleDdlStatement -StatementText "/* deployment */`ncreate table example_table (id number)" })
+        Assert-True -Condition $isDdl
     }
 }
 
 Describe 'PSOracleTools write safeguards' {
     It 'does not open a connection for Invoke-OracleNonQuery -WhatIf' {
-        { Invoke-OracleNonQuery -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Sql 'delete from example_table' -WhatIf } | Should Not Throw
+        Assert-NotThrow -ScriptBlock { Invoke-OracleNonQuery -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Sql 'delete from example_table' -WhatIf }
     }
 
     It 'does not open a connection for Invoke-OraclePlSql -WhatIf' {
-        { Invoke-OraclePlSql -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -PlSql 'begin null; end;' -WhatIf } | Should Not Throw
+        Assert-NotThrow -ScriptBlock { Invoke-OraclePlSql -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -PlSql 'begin null; end;' -WhatIf }
     }
 
     It 'does not open a connection for Invoke-OracleProcedure -WhatIf' {
-        { Invoke-OracleProcedure -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Procedure 'example_package.example_procedure' -WhatIf } | Should Not Throw
+        Assert-NotThrow -ScriptBlock { Invoke-OracleProcedure -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Procedure 'example_package.example_procedure' -WhatIf }
     }
 
     It 'does not execute a parsed SQL file for -WhatIf' {
         $path = [System.IO.Path]::GetTempFileName()
         try {
             Set-Content -LiteralPath $path -Value 'select * from dual;'
-            { Invoke-OracleSqlFile -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Path $path -WhatIf } | Should Not Throw
+            Assert-NotThrow -ScriptBlock { Invoke-OracleSqlFile -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Path $path -WhatIf }
         }
         finally {
             Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
@@ -80,9 +132,9 @@ Describe 'PSOracleTools write safeguards' {
             Set-Content -LiteralPath $path -Value "create table example_table (id number);`nselect * from dual;"
             $preview = Invoke-OracleSqlFile -Path $path -Preview
 
-            $preview.Preview | Should Be $true
-            $preview.StatementCount | Should Be 2
-            $preview.Statements[0].IsDdl | Should Be $true
+            Assert-True -Condition $preview.Preview
+            Assert-Equal -Actual $preview.StatementCount -Expected 2
+            Assert-True -Condition $preview.Statements[0].IsDdl
         }
         finally {
             Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
@@ -94,7 +146,7 @@ Describe 'PSOracleTools write safeguards' {
         $path = Join-Path $directory 'profiles.json'
         try {
             Set-OracleConnectionProfile -Name 'NoWrite' -DataSource 'example' -CredentialName 'example' -ProfileStorePath $path -WhatIf
-            (Test-Path -LiteralPath $path) | Should Be $false
+            Assert-False -Condition (Test-Path -LiteralPath $path)
         }
         finally {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
@@ -108,7 +160,7 @@ Describe 'PSOracleTools write safeguards' {
         $credential = New-Object PSCredential('example', $password)
         try {
             Set-OracleCredential -Name 'NoWrite' -Credential $credential -CredentialStorePath $path -WhatIf
-            (Test-Path -LiteralPath $path) | Should Be $false
+            Assert-False -Condition (Test-Path -LiteralPath $path)
         }
         finally {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
@@ -122,7 +174,7 @@ Describe 'PSOracleTools write safeguards' {
         try {
             $ConfirmPreference = 'High'
             Set-OracleConnectionProfile -Name 'NoPrompt' -DataSource 'example' -CredentialName 'example' -ProfileStorePath $path | Out-Null
-            (Test-Path -LiteralPath $path) | Should Be $true
+            Assert-True -Condition (Test-Path -LiteralPath $path)
         }
         finally {
             $ConfirmPreference = $originalConfirmPreference
@@ -137,8 +189,8 @@ Describe 'PSOracleTools write safeguards' {
             Set-OracleConnectionProfile -Name 'ConcurrentOne' -DataSource 'ConcurrentOne' -CredentialName 'ConcurrentOne' -ProfileStorePath $path -Confirm:$false | Out-Null
             Set-OracleConnectionProfile -Name 'ConcurrentTwo' -DataSource 'ConcurrentTwo' -CredentialName 'ConcurrentTwo' -ProfileStorePath $path -Confirm:$false | Out-Null
             $names = @(Get-OracleConnectionProfile -ProfileStorePath $path | Select-Object -ExpandProperty Name | Sort-Object)
-            $names | Should Be @('ConcurrentOne', 'ConcurrentTwo')
-            { Get-Content -LiteralPath $path -Raw | ConvertFrom-Json | Out-Null } | Should Not Throw
+            Assert-SequenceEqual -Actual $names -Expected @('ConcurrentOne', 'ConcurrentTwo')
+            Assert-NotThrow -ScriptBlock { Get-Content -LiteralPath $path -Raw | ConvertFrom-Json | Out-Null }
         }
         finally {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
@@ -155,13 +207,13 @@ Describe 'PSOracleTools write safeguards' {
 
             $threw = $false
             try {
-                & $module { param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } } $path
+                $module.Invoke({ param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } }, $path)
             }
             catch {
                 $threw = $true
             }
 
-            $threw | Should Be $true
+            Assert-True -Condition $threw
         }
         finally {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
