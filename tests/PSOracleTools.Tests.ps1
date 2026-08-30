@@ -149,35 +149,21 @@ Describe 'PSOracleTools write safeguards' {
         $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
         $path = Join-Path $directory 'profiles.json'
         $lockPath = "$path.lock"
-        $readyPath = Join-Path $directory 'lock-ready.txt'
-        $job = $null
         try {
             New-Item -Path $directory -ItemType Directory -Force | Out-Null
-            $job = Start-Job -ScriptBlock {
-                param($LockPath, $ReadyPath)
-                $stream = New-Object System.IO.FileStream($LockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
-                try {
-                    Set-Content -LiteralPath $ReadyPath -Value 'ready'
-                    Start-Sleep -Seconds 3
-                }
-                finally {
-                    $stream.Dispose()
-                }
-            } -ArgumentList $lockPath, $readyPath
+            New-Item -Path $lockPath -ItemType File -Force | Out-Null
 
-            $deadline = (Get-Date).AddSeconds(5)
-            while (-not (Test-Path -LiteralPath $readyPath) -and (Get-Date) -lt $deadline) {
-                Start-Sleep -Milliseconds 50
+            $threw = $false
+            try {
+                & $module { param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } } $path
             }
-            (Test-Path -LiteralPath $readyPath) | Should Be $true
+            catch {
+                $threw = $true
+            }
 
-            { & $module { param($StorePath) Update-OracleNamedRecordStore -Path $StorePath -StoreDescription 'connection profile' -LockTimeoutSeconds 1 -Update { param($records) return $records } } $path } | Should Throw
+            $threw | Should Be $true
         }
         finally {
-            if ($job) {
-                $job | Wait-Job | Receive-Job -ErrorAction SilentlyContinue | Out-Null
-                $job | Remove-Job -Force -ErrorAction SilentlyContinue
-            }
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

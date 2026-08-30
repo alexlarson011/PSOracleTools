@@ -40,10 +40,12 @@ namespace PSOracleTools {
     $lockPath = '{0}.lock' -f $Path
     $deadline = (Get-Date).AddSeconds($LockTimeoutSeconds)
     $lockStream = $null
+    $lockAcquired = $false
 
     while ($null -eq $lockStream) {
         try {
-            $lockStream = New-Object System.IO.FileStream($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            $lockStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            $lockAcquired = $true
         }
         catch [System.IO.IOException] {
             if ((Get-Date) -ge $deadline) {
@@ -81,6 +83,10 @@ namespace PSOracleTools {
 
         if ($lockStream) {
             $lockStream.Dispose()
+        }
+
+        if ($lockAcquired) {
+            Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
         }
     }
 }

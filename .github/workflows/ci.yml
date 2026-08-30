@@ -10,11 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Pester
+      - name: Import Pester
         shell: powershell
         run: |
-          Install-Module Pester -RequiredVersion 3.4.0 -Scope CurrentUser -Force
-          Import-Module Pester -RequiredVersion 3.4.0
+          Import-Module Pester -ErrorAction Stop
+          Get-Module Pester | Select-Object Name, Version, Path | Format-List
 
       - name: Validate manifest and command surface
         shell: powershell
@@ -22,4 +22,11 @@ jobs:
 
       - name: Run Pester tests
         shell: powershell
-        run: Invoke-Pester .\tests
+        run: |
+          $pesterVersion = (Get-Module Pester).Version
+          if ($pesterVersion.Major -ge 5) {
+            Invoke-Pester -Path .\tests -CI
+          }
+          else {
+            Invoke-Pester .\tests
+          }
