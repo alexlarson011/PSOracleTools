@@ -99,6 +99,31 @@ Describe 'PSOracleTools SQL parsing' {
         Assert-Equal -Actual $statements[1].Text -Expected 'select 2 from dual'
     }
 
+    It 'keeps apostrophes and semicolons inside Oracle alternative-quoted text' {
+        $literals = @(
+            "q'[Alex's; movie]'"
+            "Q'{brace's; value}'"
+            "q'(parenthesis's; value)'"
+            "q'<angle's; value>'"
+            "q'!custom's; value!'"
+            "q''single's; delimiter''"
+            "nq'~national's; value~'"
+            "q'[first's;`nsecond line]'"
+        )
+
+        foreach ($literal in $literals) {
+            $sql = "select $literal as value from dual;`nselect 2 from dual;"
+            $statements = @($script:module.Invoke({
+                        param($text)
+                        Split-OracleScriptStatements -Text $text
+                    }, $sql))
+
+            Assert-Equal -Actual $statements.Count -Expected 2
+            Assert-Equal -Actual $statements[0].Text -Expected "select $literal as value from dual"
+            Assert-Equal -Actual $statements[1].Text -Expected 'select 2 from dual'
+        }
+    }
+
     It 'identifies DDL after leading comments' {
         $isDdl = $script:module.Invoke({ Test-OracleDdlStatement -StatementText "/* deployment */`ncreate table example_table (id number)" })
         Assert-True -Condition $isDdl
