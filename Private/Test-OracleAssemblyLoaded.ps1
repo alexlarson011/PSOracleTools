@@ -1,10 +1,15 @@
+function Get-OracleLoadedAssembly {
+    [CmdletBinding()]
+    param()
+
+    return [AppDomain]::CurrentDomain.GetAssemblies() |
+        Where-Object { $_.GetName().Name -eq 'Oracle.ManagedDataAccess' } |
+        Select-Object -First 1
+}
+
 function Test-OracleAssemblyLoaded {
     [CmdletBinding()]
     param()
 
-    $assembly = [AppDomain]::CurrentDomain.GetAssemblies() |
-        Where-Object { $_.GetName().Name -eq 'Oracle.ManagedDataAccess' } |
-        Select-Object -First 1
-
-    return [bool]$assembly
+    return [bool](Get-OracleLoadedAssembly)
 }

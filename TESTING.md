@@ -24,8 +24,9 @@ This checks:
 - exported public commands
 - help discovery for selected commands
 
-It does not connect to Oracle. The automated Pester suite covers parsing, command safety, credential/profile file
-behavior (including concurrent profile writes), and result formatting without requiring a database. Run it when Pester is installed:
+It does not connect to Oracle. The automated Pester suite covers parsing, duplicate result columns, wrapper defaults,
+atomic output replacement, command safety, credential/profile file behavior (including concurrent profile writes),
+and result formatting without requiring a database. Run it when Pester is installed:
 
 ```powershell
 Invoke-Pester .\tests

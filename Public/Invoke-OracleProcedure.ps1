@@ -168,16 +168,11 @@ function Invoke-OracleProcedure {
     }
 
     $invokeParams = @{
-        PlSql          = $plSql
-        Parameters     = $Parameters
-        CommandTimeout = $CommandTimeout
-        Log            = $Log
-        LogSql         = $LogSql
-        LogParameters  = $LogParameters
-        OutputAsProperties = $OutputAsProperties
+        PlSql   = $plSql
+        Confirm = $false
     }
 
-    foreach ($name in 'CredentialStorePath', 'ProfileStorePath', 'LogPath') {
+    foreach ($name in 'Parameters', 'CommandTimeout', 'CredentialStorePath', 'ProfileStorePath', 'Log', 'LogPath', 'LogSql', 'LogParameters', 'OutputAsProperties') {
         if ($PSBoundParameters.ContainsKey($name)) {
             $invokeParams[$name] = $PSBoundParameters[$name]
         }

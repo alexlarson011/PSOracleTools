@@ -130,6 +130,8 @@ Get-OracleModuleConfiguration | Format-List *
 Automatic initialization is intentional and is the compatibility default: scripts that import the module can call
 the public commands immediately. It loads assemblies but does not open a database connection. If initialization
 fails, run `Initialize-OracleClient` directly to see the full diagnostics.
+If another `Oracle.ManagedDataAccess` build is already loaded in the process, the module verifies its version and
+file contents. Start a fresh PowerShell process when initialization reports a conflicting driver.
 
 ## Connecting
 
@@ -411,6 +413,9 @@ For interactive exploration, use `-MaxRows` to bound the number of in-memory res
 Invoke-OracleQuery -ProfileName 'ProdLow' -Sql 'select * from ps_tools.movies order by movie_id' -MaxRows 100
 ```
 
+When a query returns duplicate column labels, the first label is preserved and later collisions receive a numeric
+suffix such as `VALUE_2`. Blank labels receive names such as `Column1`, so every selected value remains available.
+
 ### Parameterized query
 
 ```powershell
@@ -564,6 +569,10 @@ Export-OracleDelimitedFile `
   -NoClobber
 ```
 
+Delimited and CSV exports are written to a temporary file beside the destination and replace the destination only
+after every row has been written successfully. A failed query or interrupted fetch therefore leaves an existing
+export untouched.
+
 ### Fixed-width export
 
 Use `-FixedWidth` for files whose column widths are produced in SQL with `LPAD` or `RPAD`.
@@ -698,7 +707,7 @@ while jobs might be running. Keep stores on a Windows-compatible local or SMB fi
 
 - **TNS alias or wallet connection fails:** verify `TNS_ADMIN` for the exact account that starts PowerShell or the scheduler, and confirm it can read `tnsnames.ora` and wallet files.
 - **Works interactively but fails in a scheduler:** compare the Windows identity, 64-bit PowerShell host, `TNS_ADMIN`, and SecretManagement vault access. The JAMS wrapper below is useful for in-process host issues.
-- **Oracle assembly cannot load:** run `Initialize-OracleClient` and `.\scripts\Test-OracleAssemblyDependencies.ps1 -TryModuleImport` to collect dependency diagnostics.
+- **Oracle assembly cannot load:** run `Initialize-OracleClient` and `.\scripts\Test-OracleAssemblyDependencies.ps1 -TryModuleImport` to collect dependency diagnostics. If a different driver is already loaded, start a fresh PowerShell process before importing the module.
 - **SQL file behaves differently from SQL*Plus/SQLcl:** this command intentionally supports statement boundaries and a limited directive set; it does not process includes, substitution variables, or full client commands.
 
 ## SQL Text Notes

@@ -86,6 +86,130 @@ Describe 'PSOracleTools public contract' {
     It 'exposes a bounded-row option for exploratory queries' {
         Assert-True -Condition (Get-Command Invoke-OracleQuery).Parameters.ContainsKey('MaxRows')
     }
+
+    It 'reports the Oracle assembly that is actually loaded' {
+        $initialization = Initialize-OracleClient
+        $loadedAssembly = [AppDomain]::CurrentDomain.GetAssemblies() |
+            Where-Object { $_.GetName().Name -eq 'Oracle.ManagedDataAccess' } |
+            Select-Object -First 1
+
+        Assert-Equal -Actual ([System.IO.Path]::GetFullPath($initialization.DllPath)) -Expected ([System.IO.Path]::GetFullPath($loadedAssembly.Location))
+    }
+
+    It 'rejects different driver contents after Oracle.ManagedDataAccess is loaded' {
+        $initialization = Initialize-OracleClient
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $copyPath = Join-Path $directory 'Oracle.ManagedDataAccess.dll'
+        try {
+            New-Item -Path $directory -ItemType Directory -Force | Out-Null
+            Copy-Item -LiteralPath $initialization.DllPath -Destination $copyPath
+            $stream = [System.IO.File]::Open($copyPath, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try {
+                $stream.WriteByte(0)
+            }
+            finally {
+                $stream.Dispose()
+            }
+
+            $threw = $false
+            try {
+                Initialize-OracleClient -DllPath $copyPath | Out-Null
+            }
+            catch {
+                $threw = $_.Exception.Message -like '*different file contents*Start a fresh PowerShell process*'
+            }
+
+            Assert-True -Condition $threw
+        }
+        finally {
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'PSOracleTools result conversion' {
+    It 'preserves values from duplicate and blank result-column names' {
+        $reader = [pscustomobject]@{
+            FieldCount = 4
+            Position   = -1
+            Names      = @('VALUE', 'value', 'VALUE_2', '')
+            Values     = @(1, 2, 3, 4)
+        }
+        $reader | Add-Member -MemberType ScriptMethod -Name Read -Value {
+            $this.Position++
+            return $this.Position -eq 0
+        }
+        $reader | Add-Member -MemberType ScriptMethod -Name GetName -Value { param($index) return $this.Names[$index] }
+        $reader | Add-Member -MemberType ScriptMethod -Name IsDBNull -Value { param($index) return $false }
+        $reader | Add-Member -MemberType ScriptMethod -Name GetValue -Value { param($index) return $this.Values[$index] }
+
+        $rows = @($script:module.Invoke({ param($dataReader) ConvertFrom-OracleDataReader -Reader $dataReader }, $reader))
+
+        Assert-Equal -Actual $rows.Count -Expected 1
+        Assert-SequenceEqual -Actual @($rows[0].PSObject.Properties.Name) -Expected @('VALUE', 'value_2', 'VALUE_2_2', 'Column4')
+        Assert-SequenceEqual -Actual @($rows[0].PSObject.Properties.Value) -Expected @(1, 2, 3, 4)
+    }
+
+    It 'preserves a complete one-column name' {
+        $reader = [pscustomobject]@{ FieldCount = 1; Position = -1 }
+        $reader | Add-Member -MemberType ScriptMethod -Name Read -Value {
+            $this.Position++
+            return $this.Position -eq 0
+        }
+        $reader | Add-Member -MemberType ScriptMethod -Name GetName -Value { return 'MOVIE_COUNT' }
+        $reader | Add-Member -MemberType ScriptMethod -Name IsDBNull -Value { return $false }
+        $reader | Add-Member -MemberType ScriptMethod -Name GetValue -Value { return 12 }
+
+        $rows = @($script:module.Invoke({ param($dataReader) ConvertFrom-OracleDataReader -Reader $dataReader }, $reader))
+
+        Assert-SequenceEqual -Actual @($rows[0].PSObject.Properties.Name) -Expected @('MOVIE_COUNT')
+        Assert-Equal -Actual $rows[0].MOVIE_COUNT -Expected 12
+    }
+}
+
+Describe 'PSOracleTools wrapper defaults' {
+    It 'allows CSV exports to inherit a profile command timeout' {
+        Mock -CommandName Export-OracleDelimitedFile -ModuleName PSOracleTools -MockWith {
+            [pscustomobject]@{ Operation = 'Export-OracleDelimitedFile' }
+        }
+
+        Export-OracleCsv -ProfileName 'Example' -Sql 'select 1 from dual' -Path 'example.csv' | Out-Null
+
+        Should -Invoke -CommandName Export-OracleDelimitedFile -ModuleName PSOracleTools -Times 1 -Exactly -ParameterFilter {
+            -not $PSBoundParameters.ContainsKey('CommandTimeout')
+        }
+    }
+
+    It 'forwards explicit CSV command timeouts' {
+        Mock -CommandName Export-OracleDelimitedFile -ModuleName PSOracleTools -MockWith {
+            [pscustomobject]@{ Operation = 'Export-OracleDelimitedFile' }
+        }
+
+        Export-OracleCsv -ProfileName 'Example' -Sql 'select 1 from dual' -Path 'example.csv' -CommandTimeout 42 | Out-Null
+
+        Should -Invoke -CommandName Export-OracleDelimitedFile -ModuleName PSOracleTools -Times 1 -Exactly -ParameterFilter {
+            $CommandTimeout -eq 42
+        }
+    }
+
+    It 'allows procedures to inherit profile defaults' {
+        $global:PSOracleToolsProcedureInvocationParameters = $null
+        Mock -CommandName Invoke-OraclePlSql -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsProcedureInvocationParameters = @{} + $PSBoundParameters
+            [pscustomobject]@{ Operation = 'Invoke-OraclePlSql' }
+        }
+
+        try {
+            Invoke-OracleProcedure -ProfileName 'Example' -Procedure 'example_package.run' -Confirm:$false | Out-Null
+
+            Should -Invoke -CommandName Invoke-OraclePlSql -ModuleName PSOracleTools -Times 1 -Exactly
+            Assert-False -Condition $global:PSOracleToolsProcedureInvocationParameters.ContainsKey('CommandTimeout')
+            Assert-False -Condition $global:PSOracleToolsProcedureInvocationParameters.ContainsKey('LogSql')
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsProcedureInvocationParameters -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe 'PSOracleTools SQL parsing' {
@@ -131,6 +255,37 @@ Describe 'PSOracleTools SQL parsing' {
 }
 
 Describe 'PSOracleTools write safeguards' {
+    It 'replaces only completed output files and honors NoClobber' {
+        $directory = Join-Path ([System.IO.Path]::GetTempPath()) ('PSOracleTools-Test-' + [guid]::NewGuid().ToString('N'))
+        $targetPath = Join-Path $directory 'output.csv'
+        $tempPath = Join-Path $directory 'completed.tmp'
+        $blockedTempPath = Join-Path $directory 'blocked.tmp'
+        try {
+            New-Item -Path $directory -ItemType Directory -Force | Out-Null
+            [System.IO.File]::WriteAllText($targetPath, 'previous')
+            [System.IO.File]::WriteAllText($tempPath, 'completed')
+
+            $script:module.Invoke({ param($temp, $target) Complete-OracleOutputFile -TempPath $temp -Path $target }, $tempPath, $targetPath) | Out-Null
+            Assert-Equal -Actual ([System.IO.File]::ReadAllText($targetPath)) -Expected 'completed'
+            Assert-False -Condition (Test-Path -LiteralPath $tempPath)
+
+            [System.IO.File]::WriteAllText($blockedTempPath, 'blocked')
+            $threw = $false
+            try {
+                $script:module.Invoke({ param($temp, $target) Complete-OracleOutputFile -TempPath $temp -Path $target -NoClobber }, $blockedTempPath, $targetPath) | Out-Null
+            }
+            catch {
+                $threw = $true
+            }
+
+            Assert-True -Condition $threw
+            Assert-Equal -Actual ([System.IO.File]::ReadAllText($targetPath)) -Expected 'completed'
+        }
+        finally {
+            Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'does not open a connection for Invoke-OracleNonQuery -WhatIf' {
         Assert-NotThrow -ScriptBlock { Invoke-OracleNonQuery -ConnectionString 'User Id=x;Password=x;Data Source=not-a-real-service' -Sql 'delete from example_table' -WhatIf }
     }
