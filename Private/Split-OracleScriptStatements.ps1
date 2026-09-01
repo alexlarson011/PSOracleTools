@@ -81,6 +81,8 @@ function Split-OracleScriptStatements {
     $statementIndex = 0
 
     $inSingleQuote = $false
+    $inAlternativeQuote = $false
+    $alternativeQuoteEndDelimiter = [char]0
     $inDoubleQuote = $false
     $inLineComment = $false
     $inBlockComment = $false
@@ -108,6 +110,28 @@ function Split-OracleScriptStatements {
                 [void]$buffer.Append($nextChar)
                 $i += 1
                 $inBlockComment = $false
+            }
+
+            if ($char -eq "`n") {
+                $lineBuilder.Clear() | Out-Null
+            }
+            else {
+                [void]$lineBuilder.Append($char)
+            }
+            continue
+        }
+
+        if ($inAlternativeQuote) {
+            [void]$buffer.Append($char)
+
+            if ($char -eq $alternativeQuoteEndDelimiter -and $nextChar -eq "'") {
+                [void]$buffer.Append($nextChar)
+                [void]$lineBuilder.Append($char)
+                [void]$lineBuilder.Append($nextChar)
+                $i += 1
+                $inAlternativeQuote = $false
+                $alternativeQuoteEndDelimiter = [char]0
+                continue
             }
 
             if ($char -eq "`n") {
@@ -187,6 +211,29 @@ function Split-OracleScriptStatements {
             [void]$lineBuilder.Append($nextChar)
             $inBlockComment = $true
             continue
+        }
+
+        if (($char -eq 'q' -or $char -eq 'Q') -and $nextChar -eq "'" -and $i + 2 -lt $normalizedText.Length) {
+            $alternativeQuoteStartDelimiter = $normalizedText[$i + 2]
+            if (-not [char]::IsWhiteSpace($alternativeQuoteStartDelimiter)) {
+                $alternativeQuoteEndDelimiter = switch ($alternativeQuoteStartDelimiter) {
+                    '[' { ']' }
+                    '{' { '}' }
+                    '(' { ')' }
+                    '<' { '>' }
+                    default { $alternativeQuoteStartDelimiter }
+                }
+
+                [void]$buffer.Append($char)
+                [void]$buffer.Append($nextChar)
+                [void]$buffer.Append($alternativeQuoteStartDelimiter)
+                [void]$lineBuilder.Append($char)
+                [void]$lineBuilder.Append($nextChar)
+                [void]$lineBuilder.Append($alternativeQuoteStartDelimiter)
+                $i += 2
+                $inAlternativeQuote = $true
+                continue
+            }
         }
 
         if ($char -eq "'") {

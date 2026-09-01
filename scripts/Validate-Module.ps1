@@ -3,7 +3,9 @@
 Runs lightweight validation for the PSOracleTools module.
 
 .DESCRIPTION
-Validates the module manifest, imports the module, checks the exported command surface, verifies comment-help discovery and parameter coverage, and runs focused regression checks for connection string escaping, positional helper commands, SQL script parsing, and transaction DDL detection.
+Validates the module manifest, imports the module, checks the exported command surface and module-level command
+catalog, verifies help discovery and parameter coverage, and runs focused regression checks for connection string
+escaping, positional helper commands, SQL script parsing, and transaction DDL detection.
 
 .EXAMPLE
 .\scripts\Validate-Module.ps1
@@ -25,8 +27,15 @@ $module = Import-Module $manifestPath -Force -PassThru
 $expectedFunctions = @(
     'Initialize-OracleClient',
     'Get-OracleServerInfo',
+    'Get-OracleRowCount',
+    'Get-OracleTableInfo',
+    'Get-OracleObject',
+    'Get-OracleInvalidObject',
+    'Get-OracleObjectDdl',
     'New-OracleConnectionString',
     'Test-OracleConnection',
+    'Test-OracleObject',
+    'Wait-OracleConnection',
     'Set-OracleCredential',
     'Get-OracleCredential',
     'Remove-OracleCredential',
@@ -60,9 +69,46 @@ if ($unexpected.Count -gt 0) {
     throw ('Unexpected exported functions: {0}' -f ($unexpected -join ', '))
 }
 
+Write-Host 'Checking module-level command catalog...'
+$moduleHelpPath = Join-Path -Path $repoRoot -ChildPath 'en-US\about_PSOracleTools.help.txt'
+if (-not (Test-Path -LiteralPath $moduleHelpPath -PathType Leaf)) {
+    throw "Module-level help topic is missing at [$moduleHelpPath]."
+}
+
+$moduleHelpText = Get-Content -LiteralPath $moduleHelpPath -Raw
+$documentedFunctions = @(
+    [regex]::Matches($moduleHelpText, '(?m)^ {4}([A-Za-z]+-[A-Za-z]+)\r?$') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Sort-Object -Unique
+)
+$missingFromCatalog = @($expectedFunctions | Where-Object { $_ -notin $documentedFunctions })
+$unexpectedInCatalog = @($documentedFunctions | Where-Object { $_ -notin $expectedFunctions })
+
+if ($missingFromCatalog.Count -gt 0) {
+    throw ('Module-level help is missing exported function(s): {0}' -f ($missingFromCatalog -join ', '))
+}
+if ($unexpectedInCatalog.Count -gt 0) {
+    throw ('Module-level help documents unknown function(s): {0}' -f ($unexpectedInCatalog -join ', '))
+}
+
+foreach ($name in $expectedFunctions) {
+    $descriptionPattern = '(?m)^ {{4}}{0}\r?\n {{8}}\S' -f [regex]::Escape($name)
+    if ($moduleHelpText -notmatch $descriptionPattern) {
+        throw "Module-level help has no brief description for [$name]."
+    }
+}
+
 Write-Host 'Checking help discovery...'
 $helpTargets = @(
+    'about_PSOracleTools',
     'Test-OracleConnection',
+    'Test-OracleObject',
+    'Wait-OracleConnection',
+    'Get-OracleRowCount',
+    'Get-OracleTableInfo',
+    'Get-OracleObject',
+    'Get-OracleInvalidObject',
+    'Get-OracleObjectDdl',
     'Invoke-OracleQuery',
     'Invoke-OracleSqlFile',
     'Export-OracleCsv'

@@ -10,10 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Import Pester
+      - name: Install Pester
         shell: powershell
         run: |
-          Import-Module Pester -MinimumVersion 5.0 -ErrorAction Stop
+          $ErrorActionPreference = 'Stop'
+          Install-Module Pester -RequiredVersion 5.9.0 -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -RequiredVersion 5.9.0 -ErrorAction Stop
           Get-Module Pester | Select-Object Name, Version, Path | Format-List
 
       - name: Validate manifest and command surface
@@ -22,4 +24,6 @@ jobs:
 
       - name: Run Pester tests
         shell: powershell
-        run: Invoke-Pester -Path .\tests -CI
+        run: |
+          Import-Module Pester -RequiredVersion 5.9.0 -ErrorAction Stop
+          Invoke-Pester -Path .\tests -CI

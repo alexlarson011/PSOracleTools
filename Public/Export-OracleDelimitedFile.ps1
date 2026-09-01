@@ -4,6 +4,7 @@ Exports query results to a delimited text file.
 
 .DESCRIPTION
 Runs a query and writes the resulting rows to a delimited UTF-8 file.
+Writes to a temporary file and replaces the destination only after the export completes successfully.
 Supports raw connection strings, PSCredential input, saved credential names, or saved connection profiles.
 
 .PARAMETER ConnectionString
@@ -201,6 +202,8 @@ function Export-OracleDelimitedFile {
     $command = $null
     $reader = $null
     $writer = $null
+    $tempPath = $null
+    $outputPath = $null
     $rowCount = 0
     $columnCount = 0
     $fileSizeBytes = 0
@@ -238,13 +241,16 @@ function Export-OracleDelimitedFile {
             [System.Globalization.CultureInfo]::CurrentCulture
         }
 
-        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $NoClobber -and -not $Force) {
+        $outputPath = [System.IO.Path]::GetFullPath($Path)
+        if ((Test-Path -LiteralPath $outputPath -PathType Leaf) -and $NoClobber -and -not $Force) {
             throw "Output file already exists: $Path"
         }
 
-        if ((Test-Path -LiteralPath $Path -PathType Leaf) -and $Force) {
-            (Get-Item -LiteralPath $Path).IsReadOnly = $false
+        $directory = [System.IO.Path]::GetDirectoryName($outputPath)
+        if (-not (Test-Path -LiteralPath $directory)) {
+            New-Item -Path $directory -ItemType Directory -Force | Out-Null
         }
+        $tempPath = Join-Path -Path $directory -ChildPath ('.{0}.{1}.tmp' -f ([System.IO.Path]::GetFileName($outputPath)), [guid]::NewGuid().ToString('N'))
 
         switch ($PSCmdlet.ParameterSetName) {
             'ByConnectionString' {
@@ -303,11 +309,6 @@ function Export-OracleDelimitedFile {
             }
         }
 
-        $directory = Split-Path -Path $Path -Parent
-        if ($directory -and -not (Test-Path -Path $directory)) {
-            New-Item -Path $directory -ItemType Directory -Force | Out-Null
-        }
-
         $connection = New-OracleConnection -ConnectionString $cs
         Open-OracleConnection -Connection $connection | Out-Null
 
@@ -320,7 +321,7 @@ function Export-OracleDelimitedFile {
             'Utf8Bom' { New-Object System.Text.UTF8Encoding($true) }
             'Utf8NoBom' { New-Object System.Text.UTF8Encoding($false) }
         }
-        $writer = New-Object System.IO.StreamWriter($Path, $false, $textEncoding)
+        $writer = New-Object System.IO.StreamWriter($tempPath, $false, $textEncoding)
         $outputDelimiter = if ($FixedWidth) { '' } else { $Delimiter }
 
         if ($IncludeHeader) {
@@ -345,11 +346,13 @@ function Export-OracleDelimitedFile {
             $rowCount++
         }
 
-        $sw.Stop()
         $writer.Flush()
         Close-OracleResource -Object $writer
         $writer = $null
-        $fileSizeBytes = (Get-Item -LiteralPath $Path).Length
+        Complete-OracleOutputFile -TempPath $tempPath -Path $outputPath -NoClobber:$NoClobber -Force:$Force | Out-Null
+        $tempPath = $null
+        $sw.Stop()
+        $fileSizeBytes = (Get-Item -LiteralPath $outputPath).Length
 
         if ($Log -or $LogPath) {
             Write-OracleLog -Path $LogPath -Message ("Export-OracleDelimitedFile succeeded; DataSource={0}; OutputPath={1}; RowCount={2}; ElapsedMs={3}" -f $connection.DataSource, $Path, $rowCount, $sw.ElapsedMilliseconds)
@@ -377,10 +380,12 @@ function Export-OracleDelimitedFile {
         throw
     }
     finally {
-        if ($writer) { $writer.Flush() }
         Close-OracleResource -Object $writer
         Close-OracleResource -Object $reader
         Close-OracleResource -Object $command
         Close-OracleResource -Object $connection
+        if ($tempPath -and (Test-Path -LiteralPath $tempPath)) {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
     }
 }

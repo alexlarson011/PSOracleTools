@@ -163,7 +163,6 @@ function Export-OracleCsv {
         IncludeHeader  = $true
         QuoteAll       = $true
         NullValue      = $NullValue
-        CommandTimeout = $CommandTimeout
     }
 
     if ($PSBoundParameters.ContainsKey('Sql')) {
@@ -183,6 +182,9 @@ function Export-OracleCsv {
     }
     if ($PSBoundParameters.ContainsKey('Parameters')) {
         $invokeParams.Parameters = $Parameters
+    }
+    if ($PSBoundParameters.ContainsKey('CommandTimeout')) {
+        $invokeParams.CommandTimeout = $CommandTimeout
     }
     if ($PSBoundParameters.ContainsKey('NoClobber')) {
         $invokeParams.NoClobber = $NoClobber

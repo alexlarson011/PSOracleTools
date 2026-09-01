@@ -22,10 +22,13 @@ This checks:
 - manifest validity
 - module import
 - exported public commands
+- module-level `Get-Help about_PSOracleTools` discovery and command-catalog completeness
 - help discovery for selected commands
 
-It does not connect to Oracle. The automated Pester suite covers parsing, command safety, credential/profile file
-behavior (including concurrent profile writes), and result formatting without requiring a database. Run it when Pester is installed:
+It does not connect to Oracle. The automated Pester suite covers parsing, duplicate result columns, wrapper defaults,
+atomic output replacement, command safety, credential/profile file behavior (including concurrent profile writes),
+metadata identifier safety and result grouping, connection retries, and result formatting without requiring a database.
+Run it when Pester is installed:
 
 ```powershell
 Invoke-Pester .\tests
@@ -41,6 +44,7 @@ Use a known-good Oracle data source and credential.
 Import-Module .\PSOracleTools.psd1 -Force
 Initialize-OracleClient | Format-List *
 Get-OracleModuleConfiguration | Format-List *
+Get-Help about_PSOracleTools
 ```
 
 ### Connection
@@ -54,11 +58,13 @@ Test-OracleConnection -ProfileName 'ProdLow' | Format-List *
 After automated checks pass, run the repository helper against a non-production profile first:
 
 ```powershell
-.\scripts\Test-LiveOracle.ps1 -ProfileName 'ProdLow' | Format-List *
+.\scripts\Test-LiveOracle.ps1 -ProfileName 'ProdLow' -MetadataTable 'movies' | Format-List *
 ```
 
-It verifies connection, database/session identity, `-MaxRows`, and CSV export without issuing DDL, DML, PL/SQL,
-or procedure calls. The returned `CsvPath` identifies the temporary output file for inspection.
+It verifies connection, database/session identity, connection waiting, invalid-object inspection, `-MaxRows`, and CSV
+export without issuing DDL, DML, PL/SQL, or procedure calls. `-MetadataTable` additionally checks the row-count,
+schema-inventory, object, table-information, and DDL helpers against an object owned by the test account. The returned `CsvPath`
+identifies the temporary output file for inspection.
 
 ### Scheduler identity
 
@@ -93,6 +99,29 @@ Invoke-OracleScalar `
   -ProfileName 'ProdLow' `
   -Sql 'select count(*) from ps_tools.movies'
 ```
+
+### Metadata helpers
+
+Use an object owned by the test account so `DBMS_METADATA` privileges are predictable:
+
+```powershell
+Get-OracleRowCount -ProfileName 'ProdLow' -Table 'movies' | Format-List *
+Get-OracleRowCount -ProfileName 'ProdLow' -Table 'movies' -Estimate | Format-List *
+Get-OracleObject -ProfileName 'ProdLow' -ObjectType Table -Name 'movies' | Format-List *
+Test-OracleObject -ProfileName 'ProdLow' -Name 'movies' -ObjectType Table | Format-List *
+
+$table = Get-OracleTableInfo -ProfileName 'ProdLow' -Table 'movies'
+$table | Format-List Schema, Table, RowEstimate, LastAnalyzed, ColumnCount, IndexCount
+$table.Columns | Format-Table Position, Name, DataType, Nullable
+
+Get-OracleInvalidObject -ProfileName 'ProdLow' | Format-Table Schema, Name, ObjectType, ErrorCount
+Get-OracleObjectDdl -ProfileName 'ProdLow' -Name 'movies' -ObjectType Table -DdlOnly
+Wait-OracleConnection -ProfileName 'ProdLow' -TimeoutSeconds 10 -RetryIntervalSeconds 1 | Format-List *
+```
+
+Verify that exact row count matches a direct `COUNT(*)`, schema inventory returns the test table, missing objects
+return `Success = True` and `Exists = False`, and table metadata contains the expected columns and indexes. An estimated row count can legitimately be `$null` or
+differ from the exact count when statistics are missing or stale.
 
 ### PL/SQL
 
