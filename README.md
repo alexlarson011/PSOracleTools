@@ -7,6 +7,8 @@ It is designed to keep common Oracle tasks straightforward from scripts and inte
 - connect with a raw connection string, `PSCredential`, or a saved credential name
 - store reusable connection profiles with credential, timeout, and logging defaults
 - run queries, scalar statements, non-query SQL, and PL/SQL blocks
+- inspect row counts, schema object inventories, table metadata, object status, and object DDL
+- wait for a database to become available before automated work continues
 - execute SQL files, with optional transaction handling for DML scripts
 - export result sets to delimited text files
 - export result sets to CSV files
@@ -77,12 +79,28 @@ For a read-only live check after configuration, run:
 
 ## Command Overview
 
+For the module-wide command catalog directly in PowerShell, use:
+
+```powershell
+Get-Help about_PSOracleTools
+```
+
+Use `help about_PSOracleTools` for paged console output. The topic groups every exported command by workflow and
+provides a brief description, quick start, connection-method summary, and pointers to detailed command help.
+
 The module exports these public commands:
 
 - `Initialize-OracleClient`: load the bundled Oracle managed client and report client paths.
 - `Get-OracleServerInfo`: verify the connected Oracle database, service, server, and session identity.
+- `Get-OracleRowCount`: return an exact filtered count or optimizer statistics estimate for a table.
+- `Get-OracleTableInfo`: return table details with nested column, primary-key, and index metadata.
+- `Get-OracleObject`: list visible objects in a schema with name, type, status, and internal-object filters.
+- `Get-OracleInvalidObject`: list invalid objects visible in the current or selected schema.
+- `Get-OracleObjectDdl`: retrieve creation DDL through `DBMS_METADATA.GET_DDL`.
 - `New-OracleConnectionString`: safely build an Oracle connection string.
 - `Test-OracleConnection`: test a raw, credential-based, or profile-based connection.
+- `Test-OracleObject`: test whether a named schema object is visible and valid.
+- `Wait-OracleConnection`: retry connection tests until Oracle is available or time runs out.
 - `Set-OracleCredential`, `Get-OracleCredential`, `Remove-OracleCredential`: manage saved Oracle credentials.
 - `Set-OracleConnectionProfile`, `Get-OracleConnectionProfile`, `Remove-OracleConnectionProfile`: manage reusable connection profiles.
 - `Get-OracleModuleConfiguration`, `Set-OracleModuleConfiguration`: inspect or change session-level store paths.
@@ -381,6 +399,9 @@ Operational commands return stable, typed status objects with common fields such
 
 For example, export commands return `PSOracleTools.CsvExportResult`, `PSOracleTools.DelimitedExportResult`, or `PSOracleTools.ExcelExportResult`.
 `Invoke-OracleSqlFile` returns `PSOracleTools.SqlFileResult`, with nested `PSOracleTools.SqlFileStatementResult` objects in `Statements`.
+Metadata helpers also keep a consistent shape: row counts, schema inventories, object tests, table summaries,
+invalid objects, DDL, and connection waits use typed results. `Get-OracleTableInfo` places detailed column and index records in nested
+collections, while `Get-OracleObjectDdl -DdlOnly` explicitly opts into returning a plain string.
 
 `Invoke-OraclePlSql` keeps output parameters in a stable `OutputParameters` hashtable by default.
 For interactive use, add `-OutputAsProperties` to also expose output parameters as top-level properties:
@@ -443,6 +464,90 @@ Invoke-OracleQuery `
 ```
 
 Use `New-OracleParameter` when you need an explicit Oracle type, parameter size, or non-input direction such as `Output`.
+
+## Schema Inspection And Readiness
+
+### Exact and estimated row counts
+
+```powershell
+Get-OracleRowCount -ProfileName 'ProdLow' -Table 'movies'
+
+Get-OracleRowCount -ProfileName 'ProdLow' -Table 'movies' `
+  -Where 'release_year >= :year' `
+  -Parameters @{ year = 2000 }
+
+'movies', 'actors' | Get-OracleRowCount -ProfileName 'ProdLow' -Estimate
+```
+
+Exact counts run `COUNT(*)` and can be expensive on large tables. `-Estimate` reads `ALL_TABLES.NUM_ROWS`; it is
+fast, but the value can be stale or `$null` when optimizer statistics have not been gathered. Every result identifies
+its `CountType`, whether statistics were available, and the applicable `LastAnalyzed` date.
+
+`-Where` accepts a trusted SQL predicate without the `WHERE` keyword. Put values in `-Parameters` so they are bound
+instead of interpolated into SQL. Schema and table identifiers are normalized and quoted separately.
+
+### Table and object metadata
+
+```powershell
+Get-OracleObject -ProfileName 'ProdLow' |
+  Format-Table Schema, Name, ObjectType, Status, LastDdlTime
+
+Get-OracleObject -ProfileName 'ProdLow' `
+  -ObjectType Table, View `
+  -NameLike 'MOVIE%'
+
+$table = Get-OracleTableInfo -ProfileName 'ProdLow' -Table 'movies'
+$table | Format-List Schema, Table, RowEstimate, LastAnalyzed, ColumnCount, IndexCount
+$table.Columns | Format-Table Position, Name, DataType, Nullable, PrimaryKeyPosition
+$table.Indexes | Format-List Name, Unique, Status, Columns
+
+$object = Test-OracleObject -ProfileName 'ProdLow' -Name 'movies' -ObjectType Table
+if ($object.Exists) {
+    $object.Matches | Format-Table Schema, Name, ObjectType, Status
+}
+
+Get-OracleInvalidObject -ProfileName 'ProdLow' |
+  Format-Table Schema, Name, ObjectType, ErrorCount, LastDdlTime
+```
+
+These commands query Oracle's `ALL_*` dictionary views, so "exists" means visible to the connected user. It does
+not promise that every possible operation on the object is granted. By default they inspect the current schema;
+use `-Schema` for another visible schema, or `Get-OracleInvalidObject -AllSchemas` for all visible schemas.
+
+`Get-OracleObject` normally returns user-named, top-level, non-secondary objects so inventories are not buried in
+internal rows. Add `-IncludeGenerated`, `-IncludeSecondary`, or `-IncludeSubobjects` when those details matter.
+`-Name` performs exact matching, `-NameLike` accepts an Oracle `LIKE` pattern, and `-MaxObjects` bounds the returned rows.
+
+### Object DDL
+
+```powershell
+$result = Get-OracleObjectDdl -ProfileName 'ProdLow' -Name 'movies' -ObjectType Table
+$result.Ddl
+
+Get-OracleObjectDdl -ProfileName 'ProdLow' `
+  -Name 'movie_pkg' `
+  -ObjectType PackageBody `
+  -DdlOnly
+```
+
+`Get-OracleObjectDdl` uses Oracle's default `DBMS_METADATA.GET_DDL` transforms. Oracle may include physical storage
+attributes in the returned statement. Accessing DDL for objects owned by another schema can require additional
+catalog privileges. Friendly types such as `PackageBody` are mapped to Oracle metadata names such as `PACKAGE_BODY`.
+
+### Wait for Oracle
+
+```powershell
+$ready = Wait-OracleConnection -ProfileName 'ProdLow' `
+  -TimeoutSeconds 300 `
+  -RetryIntervalSeconds 10
+
+if (-not $ready.Success) {
+    throw $ready.ErrorMessage
+}
+```
+
+For deployment or scheduler entry points, `-ThrowOnTimeout` provides a terminating failure directly. The result
+includes `Attempts`, `ElapsedMs`, and the final `Test-OracleConnection` result in `LastTest`.
 
 ## Positional Parameter Notes
 

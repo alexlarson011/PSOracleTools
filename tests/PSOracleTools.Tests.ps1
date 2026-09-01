@@ -62,7 +62,9 @@ BeforeAll {
 Describe 'PSOracleTools public contract' {
     It 'exports the documented commands' {
         $expected = @(
-            'Initialize-OracleClient', 'Get-OracleServerInfo', 'New-OracleConnectionString', 'Test-OracleConnection',
+            'Initialize-OracleClient', 'Get-OracleServerInfo', 'Get-OracleRowCount', 'Get-OracleTableInfo', 'Get-OracleObject',
+            'Get-OracleInvalidObject', 'Get-OracleObjectDdl', 'New-OracleConnectionString',
+            'Test-OracleConnection', 'Test-OracleObject', 'Wait-OracleConnection',
             'Set-OracleCredential', 'Get-OracleCredential', 'Remove-OracleCredential',
             'Get-OracleModuleConfiguration', 'Set-OracleModuleConfiguration',
             'Set-OracleConnectionProfile', 'Get-OracleConnectionProfile', 'Remove-OracleConnectionProfile',
@@ -72,6 +74,21 @@ Describe 'PSOracleTools public contract' {
         )
 
         Assert-SequenceEqual -Actual @($script:module.ExportedFunctions.Keys | Sort-Object) -Expected @($expected | Sort-Object)
+    }
+
+    It 'publishes module-level conceptual help for every exported command' {
+        $help = @(Get-Help about_PSOracleTools -ErrorAction Stop)
+        $helpPath = Join-Path -Path $script:repoRoot -ChildPath 'en-US\about_PSOracleTools.help.txt'
+        $helpText = Get-Content -LiteralPath $helpPath -Raw
+
+        Assert-True -Condition ($help.Count -gt 0)
+        Assert-True -Condition (@($help.Name) -contains 'about_PSOracleTools')
+        Assert-True -Condition (-not [string]::IsNullOrWhiteSpace([string]$help[0].Synopsis))
+
+        foreach ($name in @($script:module.ExportedFunctions.Keys)) {
+            $pattern = '(?m)^ {{4}}{0}\r?$' -f [regex]::Escape($name)
+            Assert-True -Condition ($helpText -match $pattern) -Message "Module-level help does not catalog [$name]."
+        }
     }
 
     It 'escapes connection-string values through the Oracle builder' {
@@ -123,6 +140,250 @@ Describe 'PSOracleTools public contract' {
         }
         finally {
             Remove-Item -LiteralPath $directory -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'PSOracleTools metadata commands' {
+    It 'normalizes and safely quotes Oracle identifiers' {
+        $ordinary = $script:module.Invoke({ Resolve-OracleIdentifier -Name 'movies' -Description 'Table name' })
+        $quoted = $script:module.Invoke({ Resolve-OracleIdentifier -Name '"Mixed Name"' -Description 'Table name' })
+
+        Assert-Equal -Actual $ordinary.Name -Expected 'MOVIES'
+        Assert-Equal -Actual $ordinary.Sql -Expected '"MOVIES"'
+        Assert-Equal -Actual $quoted.Name -Expected 'Mixed Name'
+        Assert-Equal -Actual $quoted.Sql -Expected '"Mixed Name"'
+
+        $threw = $false
+        try {
+            $script:module.Invoke({ Resolve-OracleIdentifier -Name 'APP.MOVIES' -Description 'Table name' }) | Out-Null
+        }
+        catch {
+            $threw = $true
+        }
+        Assert-True -Condition $threw
+    }
+
+    It 'returns a stable exact row-count result and inherits profile defaults' {
+        $global:PSOracleToolsQueryInvocation = $null
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsQueryInvocation = [pscustomobject]@{ Sql = $Sql; Parameters = $Parameters }
+            [pscustomobject]@{ schema_name = 'APP'; row_count = [decimal]6 }
+        }
+
+        try {
+            $result = Get-OracleRowCount -ProfileName 'Example' -Table 'movies'
+
+            Assert-Equal -Actual $result.PSObject.TypeNames[0] -Expected 'PSOracleTools.RowCountResult'
+            Assert-Equal -Actual $result.Schema -Expected 'APP'
+            Assert-Equal -Actual $result.Table -Expected 'MOVIES'
+            Assert-Equal -Actual $result.RowCount -Expected ([decimal]6)
+            Assert-Equal -Actual $result.CountType -Expected 'Exact'
+            Assert-True -Condition $global:PSOracleToolsQueryInvocation.Sql.Contains('from "MOVIES"')
+            Should -Invoke -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -Times 1 -Exactly -ParameterFilter {
+                -not $PSBoundParameters.ContainsKey('CommandTimeout')
+            }
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsQueryInvocation -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'binds row-count filter values instead of interpolating them' {
+        $global:PSOracleToolsQueryInvocation = $null
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsQueryInvocation = [pscustomobject]@{ Sql = $Sql; Parameters = $Parameters }
+            [pscustomobject]@{ schema_name = 'APP'; row_count = [decimal]4 }
+        }
+
+        try {
+            Get-OracleRowCount -ConnectionString 'example' -Table 'movies' -Where 'release_year >= :year' -Parameters @{ year = 2000 } | Out-Null
+
+            Assert-True -Condition $global:PSOracleToolsQueryInvocation.Sql.Contains('where release_year >= :year')
+            Assert-Equal -Actual $global:PSOracleToolsQueryInvocation.Parameters.year -Expected 2000
+            Assert-False -Condition $global:PSOracleToolsQueryInvocation.Sql.Contains('2000')
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsQueryInvocation -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'distinguishes a successful object lookup from a missing object' {
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            [pscustomobject]@{
+                schema_name  = 'APP'
+                owner        = $null
+                object_name  = $null
+                object_type  = $null
+                status       = $null
+                created      = $null
+                last_ddl_time = $null
+            }
+        }
+
+        $result = Test-OracleObject -ConnectionString 'example' -Name 'missing_table' -ObjectType Table
+
+        Assert-True -Condition $result.Success
+        Assert-False -Condition $result.Exists
+        Assert-Equal -Actual $result.MatchCount -Expected 0
+        Assert-Equal -Actual $result.Schema -Expected 'APP'
+    }
+
+    It 'lists schema objects with bound filters and clean defaults' {
+        $global:PSOracleToolsObjectInvocation = $null
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsObjectInvocation = [pscustomobject]@{ Sql = $Sql; Parameters = $Parameters }
+            return @(
+                [pscustomobject]@{
+                    schema_name = 'APP'; object_name = 'MOVIES'; subobject_name = $null; object_id = [decimal]10
+                    data_object_id = [decimal]11; object_type = 'TABLE'; created = [datetime]'2026-01-01'
+                    last_ddl_time = [datetime]'2026-01-02'; specification_timestamp = '2026-01-02:00:00:00'
+                    status = 'VALID'; temporary = 'N'; generated = 'N'; secondary = 'N'; namespace = [decimal]1
+                    edition_name = $null
+                }
+                [pscustomobject]@{
+                    schema_name = 'APP'; object_name = 'MOVIE_PKG'; subobject_name = $null; object_id = [decimal]12
+                    data_object_id = $null; object_type = 'PACKAGE BODY'; created = [datetime]'2026-01-01'
+                    last_ddl_time = [datetime]'2026-01-03'; specification_timestamp = '2026-01-03:00:00:00'
+                    status = 'VALID'; temporary = 'N'; generated = 'N'; secondary = 'N'; namespace = [decimal]2
+                    edition_name = 'ORA$BASE'
+                }
+            )
+        }
+
+        try {
+            $results = @(Get-OracleObject -ProfileName 'Example' -Schema 'app' -NameLike 'MOVIE%' -ObjectType Table, PackageBody -Status Valid -MaxObjects 5)
+
+            Assert-Equal -Actual $results.Count -Expected 2
+            Assert-Equal -Actual $results[0].PSObject.TypeNames[0] -Expected 'PSOracleTools.SchemaObjectResult'
+            Assert-SequenceEqual -Actual @($results.ObjectType) -Expected @('TABLE', 'PACKAGE BODY')
+            Assert-Equal -Actual $global:PSOracleToolsObjectInvocation.Parameters.schema_name -Expected 'APP'
+            Assert-Equal -Actual $global:PSOracleToolsObjectInvocation.Parameters.name_like -Expected 'MOVIE%'
+            Assert-True -Condition (@($global:PSOracleToolsObjectInvocation.Parameters.Values) -contains 'TABLE')
+            Assert-True -Condition (@($global:PSOracleToolsObjectInvocation.Parameters.Values) -contains 'PACKAGE BODY')
+            Assert-True -Condition ($global:PSOracleToolsObjectInvocation.Sql -match "o.generated = 'N'")
+            Assert-True -Condition ($global:PSOracleToolsObjectInvocation.Sql -match "o.secondary = 'N'")
+            Assert-True -Condition ($global:PSOracleToolsObjectInvocation.Sql -match 'o.subobject_name is null')
+            Should -Invoke -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -Times 1 -Exactly -ParameterFilter {
+                $MaxRows -eq 5 -and -not $PSBoundParameters.ContainsKey('CommandTimeout')
+            }
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsObjectInvocation -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'groups table columns, primary keys, and index columns' {
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            if ($Sql -match 'from all_tables') {
+                return [pscustomobject]@{
+                    schema_name = 'APP'; table_name = 'MOVIES'; tablespace_name = 'USERS'; temporary = 'N'
+                    partitioned = 'NO'; iot_type = $null; compression = 'DISABLED'; compress_for = $null
+                    num_rows = [decimal]6; blocks = [decimal]1; avg_row_len = [decimal]20; last_analyzed = [datetime]'2026-01-01'
+                }
+            }
+            if ($Sql -match 'from all_tab_columns') {
+                return @(
+                    [pscustomobject]@{
+                        column_id = 1; column_name = 'MOVIE_ID'; data_type = 'NUMBER'; data_length = 22
+                        char_length = 0; char_used = $null; data_precision = 10; data_scale = 0; nullable = 'N'
+                        data_default = $null; primary_key_name = 'PK_MOVIES'; primary_key_position = 1
+                    }
+                    [pscustomobject]@{
+                        column_id = 2; column_name = 'MOVIE_NM'; data_type = 'VARCHAR2'; data_length = 100
+                        char_length = 100; char_used = 'B'; data_precision = $null; data_scale = $null; nullable = 'Y'
+                        data_default = $null; primary_key_name = $null; primary_key_position = $null
+                    }
+                )
+            }
+            if ($Sql -match 'from all_indexes') {
+                return @(
+                    [pscustomobject]@{
+                        index_owner = 'APP'; index_name = 'PK_MOVIES'; index_type = 'NORMAL'; uniqueness = 'UNIQUE'
+                        compression = 'DISABLED'; prefix_length = $null; tablespace_name = 'USERS'; status = 'VALID'
+                        partitioned = 'NO'; last_analyzed = [datetime]'2026-01-01'; column_name = 'MOVIE_ID'
+                        column_position = 1; column_length = 22; descend = 'ASC'
+                    }
+                )
+            }
+        }
+
+        $result = Get-OracleTableInfo -ConnectionString 'example' -Table 'movies'
+
+        Assert-Equal -Actual $result.PSObject.TypeNames[0] -Expected 'PSOracleTools.TableInfoResult'
+        Assert-Equal -Actual $result.ColumnCount -Expected 2
+        Assert-SequenceEqual -Actual @($result.Columns.Name) -Expected @('MOVIE_ID', 'MOVIE_NM')
+        Assert-Equal -Actual $result.PrimaryKey.Name -Expected 'PK_MOVIES'
+        Assert-SequenceEqual -Actual @($result.PrimaryKey.Columns) -Expected @('MOVIE_ID')
+        Assert-Equal -Actual $result.IndexCount -Expected 1
+        Assert-SequenceEqual -Actual @($result.Indexes[0].Columns.Name) -Expected @('MOVIE_ID')
+    }
+
+    It 'maps friendly DDL object types to DBMS_METADATA names' {
+        $global:PSOracleToolsDdlInvocation = $null
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsDdlInvocation = [pscustomobject]@{ Sql = $Sql; Parameters = $Parameters }
+            [pscustomobject]@{ schema_name = 'APP'; ddl = 'create package body MOVIE_PKG as end;' }
+        }
+
+        try {
+            $result = Get-OracleObjectDdl -ConnectionString 'example' -Name 'movie_pkg' -ObjectType PackageBody
+
+            Assert-Equal -Actual $result.MetadataType -Expected 'PACKAGE_BODY'
+            Assert-Equal -Actual $global:PSOracleToolsDdlInvocation.Parameters.metadata_type -Expected 'PACKAGE_BODY'
+            Assert-True -Condition $result.Ddl.StartsWith('create package body')
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsDdlInvocation -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'returns stable invalid-object rows with error counts' {
+        $global:PSOracleToolsInvalidObjectSql = $null
+        Mock -CommandName Invoke-OracleQuery -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsInvalidObjectSql = $Sql
+            [pscustomobject]@{
+                schema_name = 'APP'; object_name = 'MOVIE_PKG'; object_type = 'PACKAGE BODY'; status = 'INVALID'
+                error_count = [decimal]2; created = [datetime]'2026-01-01'; last_ddl_time = [datetime]'2026-01-02'
+            }
+        }
+
+        try {
+            $result = Get-OracleInvalidObject -ConnectionString 'example' -ObjectType PackageBody
+
+            Assert-Equal -Actual $result.PSObject.TypeNames[0] -Expected 'PSOracleTools.InvalidObjectResult'
+            Assert-Equal -Actual $result.Name -Expected 'MOVIE_PKG'
+            Assert-Equal -Actual $result.ErrorCount -Expected 2
+            Assert-True -Condition ($global:PSOracleToolsInvalidObjectSql -match 'from all_objects o\s+where')
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsInvalidObjectSql -Scope Global -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'waits through transient connection failures' {
+        $global:PSOracleToolsConnectionAttempts = 0
+        Mock -CommandName Test-OracleConnection -ModuleName PSOracleTools -MockWith {
+            $global:PSOracleToolsConnectionAttempts++
+            if ($global:PSOracleToolsConnectionAttempts -eq 1) {
+                return [pscustomobject]@{ Success = $false; DataSource = 'example'; ErrorMessage = 'not ready' }
+            }
+            return [pscustomobject]@{
+                Success = $true; DataSource = 'example'; UserName = 'APP'; ServerVersion = '19c'; DatabaseTime = Get-Date
+            }
+        }
+        Mock -CommandName Start-Sleep -ModuleName PSOracleTools
+
+        try {
+            $result = Wait-OracleConnection -ConnectionString 'example' -TimeoutSeconds 5 -RetryIntervalSeconds 0.1
+
+            Assert-True -Condition $result.Success
+            Assert-Equal -Actual $result.Attempts -Expected 2
+            Assert-False -Condition $result.TimedOut
+            Should -Invoke -CommandName Start-Sleep -ModuleName PSOracleTools -Times 1 -Exactly
+        }
+        finally {
+            Remove-Variable -Name PSOracleToolsConnectionAttempts -Scope Global -ErrorAction SilentlyContinue
         }
     }
 }

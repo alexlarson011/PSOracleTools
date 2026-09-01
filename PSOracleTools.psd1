@@ -11,8 +11,15 @@
     FunctionsToExport = @(
         'Initialize-OracleClient',
         'Get-OracleServerInfo',
+        'Get-OracleRowCount',
+        'Get-OracleTableInfo',
+        'Get-OracleObject',
+        'Get-OracleInvalidObject',
+        'Get-OracleObjectDdl',
         'New-OracleConnectionString',
         'Test-OracleConnection',
+        'Test-OracleObject',
+        'Wait-OracleConnection',
         'Set-OracleCredential',
         'Get-OracleCredential',
         'Remove-OracleCredential',
@@ -42,7 +49,7 @@
             Tags       = @('Oracle', 'ODP.NET', 'PowerShell', 'Database', 'Export')
             LicenseUri = 'https://github.com/alexlarson011/PSOracleTools/blob/main/LICENSE'
             ProjectUri = 'https://github.com/alexlarson011/PSOracleTools'
-            ReleaseNotes = 'Version 1.1.1 restores non-interactive defaults for write commands and adds atomic, lock-protected credential and profile store updates.'
+            ReleaseNotes = 'Version 1.1.1 adds module-wide help, schema discovery, object DDL and metadata tools, row counts, connection waiting, and fixes for SQL parsing, duplicate columns, exports, driver conflicts, inherited settings, and confirmation behavior.'
         }
     }
 }

@@ -1,0 +1,161 @@
+TOPIC
+    about_PSOracleTools
+
+SHORT DESCRIPTION
+    Provides Oracle connection, query, schema-inspection, execution, and export tools for Windows PowerShell.
+
+LONG DESCRIPTION
+    PSOracleTools works with Oracle databases through the bundled Oracle.ManagedDataAccess driver. Commands can
+    connect with a raw connection string, a PSCredential and data source, a saved credential name, or a saved
+    connection profile. Profiles can centralize credential, timeout, and logging defaults for interactive scripts,
+    scheduled jobs, and other automation.
+
+    Query commands return PowerShell objects. Operational commands return stable typed results with properties such
+    as Success, Operation, ProfileName, and elapsed time. Write commands support PowerShell's WhatIf and Confirm
+    safeguards where applicable.
+
+QUICK START
+    Create a saved credential and profile, verify the connection, and run a query:
+
+        Set-OracleCredential DevCred APP_USER
+        Set-OracleConnectionProfile Dev mydb_low DevCred
+        Test-OracleConnection -ProfileName Dev
+        Invoke-OracleQuery -ProfileName Dev -Sql 'select sysdate from dual'
+
+    Inspect the current schema:
+
+        Get-OracleObject -ProfileName Dev
+        Get-OracleTableInfo -ProfileName Dev -Table movies
+        Get-OracleRowCount -ProfileName Dev -Table movies
+
+COMMAND REFERENCE
+
+  Client, connection, and configuration
+
+    Initialize-OracleClient
+        Loads the bundled managed Oracle driver and reports client and configuration paths.
+
+    New-OracleConnectionString
+        Builds and safely escapes an Oracle connection string.
+
+    Test-OracleConnection
+        Opens an Oracle connection, runs a simple query, and returns connection diagnostics.
+
+    Wait-OracleConnection
+        Retries connection tests until Oracle becomes available or the wait timeout expires.
+
+    Get-OracleServerInfo
+        Reports the connected database, service, host, instance, user, and session identity.
+
+    Get-OracleModuleConfiguration
+        Returns the active credential-store and profile-store configuration for the module session.
+
+    Set-OracleModuleConfiguration
+        Changes credential-store or profile-store paths for the current module session.
+
+  Credentials and connection profiles
+
+    Set-OracleCredential
+        Saves Oracle credential metadata and stores its password locally or in a SecretManagement vault.
+
+    Get-OracleCredential
+        Lists saved Oracle credential metadata without exposing passwords.
+
+    Remove-OracleCredential
+        Removes saved credential metadata and can optionally remove its vault secret.
+
+    Set-OracleConnectionProfile
+        Creates or updates a reusable data source, credential, timeout, and logging profile.
+
+    Get-OracleConnectionProfile
+        Lists saved connection profiles without resolving passwords.
+
+    Remove-OracleConnectionProfile
+        Removes a saved Oracle connection profile.
+
+  Query and execution
+
+    Invoke-OracleQuery
+        Runs a query and returns dynamic PowerShell row objects for the result set.
+
+    Invoke-OracleScalar
+        Runs a query and returns the first column of the first row.
+
+    Invoke-OracleNonQuery
+        Executes SQL that does not return rows and reports the affected-row count.
+
+    Invoke-OraclePlSql
+        Executes an anonymous PL/SQL block and captures output parameters.
+
+    Invoke-OracleProcedure
+        Builds and executes a stored-procedure call with input and output parameters.
+
+    Invoke-OracleSqlFile
+        Parses and executes supported SQL files with preview and optional transaction handling.
+
+    New-OracleParameter
+        Creates a typed OracleParameter for explicit types, sizes, and parameter directions.
+
+  Schema inspection
+
+    Get-OracleObject
+        Lists visible objects in a schema with name, type, status, and internal-object filters.
+
+    Test-OracleObject
+        Tests whether a named schema object is visible and reports all matching object types.
+
+    Get-OracleInvalidObject
+        Lists invalid visible objects and their Oracle compiler-error counts.
+
+    Get-OracleTableInfo
+        Returns table details with nested column, primary-key, and index metadata.
+
+    Get-OracleRowCount
+        Returns exact, filtered, or optimizer-estimated row counts for one or more tables.
+
+    Get-OracleObjectDdl
+        Retrieves creation DDL for a schema object through DBMS_METADATA.GET_DDL.
+
+  Export
+
+    Export-OracleDelimitedFile
+        Streams a query result to a configurable delimited text file.
+
+    Export-OracleCsv
+        Exports a query result to CSV using the module's safe streaming file writer.
+
+    Export-OracleExcel
+        Exports a query result to a native XLSX workbook without requiring Microsoft Excel.
+
+CONNECTION METHODS
+    Most database commands accept one of these connection styles:
+
+        -ConnectionString
+            A complete Oracle connection string.
+
+        -Credential and -DataSource
+            A PSCredential paired with a data source or TNS alias.
+
+        -CredentialName and -CredentialDataSource
+            Saved credential metadata paired with a data source or TNS alias.
+
+        -ProfileName
+            A saved profile containing the data source, credential name, and optional defaults.
+
+    Profile-based connections are normally the clearest choice for recurring scripts and scheduled jobs.
+
+GETTING DETAILED HELP
+    Use Get-Help with an individual command for syntax, parameters, and examples:
+
+        Get-Help Invoke-OracleQuery -Full
+        Get-Help Get-OracleObject -Examples
+        Get-Help Set-OracleCredential -Parameter SecretVault
+
+    List the currently exported commands with:
+
+        Get-Command -Module PSOracleTools | Sort-Object Name
+
+SEE ALSO
+    README.md in the module repository
+    TESTING.md in the module repository
+    Get-Help about_Comment_Based_Help

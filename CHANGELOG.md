@@ -4,8 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## 1.1.1 - 2026-08-31
+
+### Added
+
+- Added `Get-Help about_PSOracleTools` module-level conceptual help with a validated catalog of every exported command.
+- Added `Get-OracleRowCount` with exact, parameterized filtered, estimated, multi-table, and pipeline modes.
+- Added `Get-OracleObject` for filtered schema inventories with opt-in generated, secondary, and subobject rows.
+- Added `Test-OracleObject`, `Get-OracleTableInfo`, and `Get-OracleInvalidObject` for stable schema metadata results.
+- Added `Get-OracleObjectDdl` for `DBMS_METADATA.GET_DDL` retrieval with friendly object-type mapping.
+- Added `Wait-OracleConnection` for bounded connection retry workflows.
+
 ### Fixed
 
+- Restored non-interactive defaults for write commands while keeping explicit `-WhatIf` and `-Confirm` support.
+- Made credential and profile JSON updates lock-protected and atomic to avoid concurrent-writer data loss.
 - Preserved Oracle alternative-quoted literals when parsing SQL files.
 - Preserved duplicate query columns by assigning deterministic unique property names.
 - Allowed CSV and procedure wrappers to inherit profile command timeout and logging defaults.
@@ -16,13 +29,6 @@ All notable changes to this project are documented here.
 ### Changed
 
 - Pinned the CI test environment to Pester 5.9.0.
-
-## 1.1.1 - 2026-08-31
-
-### Fixed
-
-- Restored non-interactive defaults for write commands while keeping explicit `-WhatIf` and `-Confirm` support.
-- Made credential and profile JSON updates lock-protected and atomic to avoid concurrent-writer data loss.
 
 ## 1.1.0 - 2026-08-31
 
